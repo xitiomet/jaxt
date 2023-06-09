@@ -131,4 +131,10 @@ public class KISSClient implements Runnable
             this.send(packet.bytesWithoutCRC());
         } catch (Exception e) {}
     }
+
+    public void sent(String from, String to, String data)
+    {
+        Packet packet = new Packet(from, to, data);
+        this.send(packet);
+    }
 }

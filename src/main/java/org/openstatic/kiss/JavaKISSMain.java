@@ -23,7 +23,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             try
             {
                 Thread.sleep(10000);
-                String payload = "Test Transmission " + String.valueOf(System.currentTimeMillis());
+                String payload = "This is a semi-long Test Transmission for the sake of testing packet radio #" + String.valueOf(System.currentTimeMillis());
                 Packet packet = new Packet("XXX", "XYZ", payload);
                 kClient.send(packet);
             } catch (Exception e) {}
