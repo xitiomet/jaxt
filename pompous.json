@@ -1,0 +1,13 @@
+{
+    "projectName": "Java KISS",
+    "domain": "openstatic.org",
+    "projectShortName": "java-kiss",
+    "mainClassName": "JavaKISSMain",
+    "projectDescription": "A Java KISS TNC Client implementation",
+    "appType": "cli",
+    "licType": "ACSL",
+    "depJava": "on",
+    "depOrgJson": "on",
+    "javadoc": "on",
+    "generate": "Build my Maven Project STUB"
+}
