@@ -38,25 +38,29 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
     public void run()
     {
+        int seq = 1;
         while(true)
         {
             try
             {
-                Thread.sleep(10000);
+                Thread.sleep(JavaKISSMain.settings.optLong("txTestDelay", 10000));
                 String tsString = String.valueOf(System.currentTimeMillis());
-
-                String payload = "This is a semi-long Test Transmission for the sake of testing packet radio #" + tsString;
+                String seqString = String.valueOf(seq);
+                String payload = "This is a semi-long Test Transmission for the sake of testing packet radio @" + tsString + " #" + seqString;
                 if (settings.has("testPayload"))
                 {
-                    payload = settings.optString("testPayload").replaceAll(Pattern.quote("{{ts}}"), tsString);
+                    payload = settings.optString("testPayload").replaceAll(Pattern.quote("{{ts}}"), tsString).replaceAll(Pattern.quote("{{seq}}"), tsString);
                 }
                 Packet packet = new Packet("XXX", "XYZ", payload);
                 kClient.send(packet);
+
                 jsonLogAppend("tx.json", packet.toJSONObject());
+
                 if (JavaKISSMain.settings.optBoolean("verbose", false))
                 {
                     System.err.println("[" + this.simpleDateFormat.format(packet.getTimestamp()) + "] (Tx) " + packet.toLogString());
                 }
+                seq++;
             } catch (Exception e) {
                 log(e);
             }
@@ -68,7 +72,9 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         CommandLine cmd = null;
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();
-        options.addOption(new Option("t", "test", false, "Send test packets"));
+        Option testOption = new Option("t", "test", true, "Send test packets");
+        testOption.setOptionalArg(true);
+        options.addOption(testOption);
         options.addOption(new Option("h", "host", true, "Specify TNC host"));
         options.addOption(new Option("p", "port", true, "KISS Port"));
         options.addOption(new Option("f", "config-file", true, "Specify config file (.json)"));
@@ -95,6 +101,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             if (cmd.hasOption("t"))
             {
                 settings.put("txTest", true);
+                settings.put("txTestDelay", Long.valueOf(cmd.getOptionValue("t", "10")).longValue() * 1000l);
             }
 
             if (cmd.hasOption("v"))
@@ -125,6 +132,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                     saveSettings();
                 }
             });
+            kClient.connect();
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -198,13 +206,29 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
     public static void log(Exception e)
     {
+        try
+        {
+            String msg = e.getMessage();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PrintStream ps = new PrintStream(baos, true, Charset.forName("UTF-8"));
+            e.printStackTrace(ps);
+            ps.flush();
 
-        String msg = e.getMessage();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(baos, true, Charset.forName("UTF-8"));
-        e.printStackTrace(ps);
-        ps.flush();
-        logAppend("exceptions.log", msg + "\n" + baos.toString());
+            String pattern = "HH:mm:ss yyyy-MM-dd";
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+            File logFile = new File(JavaKISSMain.logsFolder, "exceptions.log");
+            File logFileParent = logFile.getParentFile();
+            if (!logFileParent.exists())
+                logFileParent.mkdirs();
+            FileOutputStream logOutputStream = new FileOutputStream(logFile, true);;
+            PrintWriter logWriter = new PrintWriter(logOutputStream, true, Charset.forName("UTF-8"));
+            String logText = "[" + simpleDateFormat.format(new Date(System.currentTimeMillis())) + "] " + msg + "\n" + baos.toString();
+            logWriter.println(logText);
+            logWriter.flush();
+            logWriter.close();
+            logOutputStream.close();
+        } catch (Exception e2) {
+        }
     }
 
     public static void saveSettings()

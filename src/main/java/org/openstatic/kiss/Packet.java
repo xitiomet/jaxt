@@ -1,7 +1,6 @@
 package org.openstatic.kiss;
 
 import java.nio.charset.Charset;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.json.JSONArray;

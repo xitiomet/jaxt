@@ -27,10 +27,7 @@ public class KISSClient implements Runnable
         this.connected = false;
         this.kissProcessor = new KissProcessor(this, (byte) 8);
         this.address = new InetSocketAddress(ipAddress, port);
-        this.connect();
         this.listeners = new ArrayList<AX25PacketListener>();
-        this.connectionThread = new Thread(this);
-        this.connectionThread.start();
     }
 
     public void addAX25PacketListener(AX25PacketListener listener)
@@ -45,25 +42,52 @@ public class KISSClient implements Runnable
             this.listeners.remove(listener);
     }
 
+    public void disconnect()
+    {
+        this.keepRunning = false;
+        try
+        {
+            this.socket.close();
+        } catch (Exception e) {
+
+        }
+        this.fireDisconnect();
+    }
+
     public void connect()
     {
-        try
+        if (!this.connected)
         {
-            if (this.socket != null)
+            try
             {
-                if (!this.socket.isClosed())
-                    this.socket.close();
-            }
-        } catch (Exception e1) {}
-        try
+                if (this.socket != null)
+                {
+                    if (!this.socket.isClosed())
+                        this.socket.close();
+                }
+            } catch (Exception e1) {}
+            try
+            {
+                this.socket = SocketFactory.getDefault().createSocket();
+                this.socket.connect(this.address);
+                this.inputStream = this.socket.getInputStream();
+                this.outputStream = this.socket.getOutputStream();
+                this.connected = true;
+                this.keepRunning = true;
+                this.listeners.forEach((l) -> l.onKISSConnect(this.address));
+            } catch (Exception e) {}
+        }
+        if (this.connectionThread != null)
         {
-            this.socket = SocketFactory.getDefault().createSocket();
-            this.socket.connect(this.address);
-            this.inputStream = this.socket.getInputStream();
-            this.outputStream = this.socket.getOutputStream();
-            this.connected = true;
-            this.listeners.forEach((l) -> l.onKISSConnect(this.address));
-        } catch (Exception e) {}
+            if (!this.connectionThread.isAlive())
+            {
+                this.connectionThread = new Thread(this);
+                this.connectionThread.start();
+            }
+        } else {
+            this.connectionThread = new Thread(this);
+            this.connectionThread.start();
+        }
     }
 
     @Override
@@ -79,7 +103,7 @@ public class KISSClient implements Runnable
                     this.connect();
                 }
             } catch (Exception e) {
-                e.printStackTrace(System.err);
+                //e.printStackTrace(System.err);
             }
             try
             {
@@ -91,7 +115,7 @@ public class KISSClient implements Runnable
                     this.kissProcessor.receive(bb);
                 }
             } catch (Exception e) {
-                e.printStackTrace(System.err);
+                //e.printStackTrace(System.err);
                 fireDisconnect();
             }
             try
@@ -99,15 +123,17 @@ public class KISSClient implements Runnable
                 Thread.sleep(100);
             } catch (Exception sleepError) {}
         }
+        this.connectionThread = null;
     }
 
-    protected void onKPSend(byte[] data) 
+    protected void onKPSend(byte[] data) throws IOException
     {
         try
         {
             this.outputStream.write(data);
-        } catch (Exception e) {
+        } catch (IOException e) {
             fireDisconnect();
+            throw e;
         }
     }
 
@@ -135,15 +161,12 @@ public class KISSClient implements Runnable
         this.kissProcessor.completeKissPacket();
     }
 
-    public void send(Packet packet)
+    public void send(Packet packet) throws IOException
     {
-        try
-        {
-            this.send(packet.bytesWithoutCRC());
-        } catch (Exception e) {}
+        this.send(packet.bytesWithoutCRC());
     }
 
-    public void sent(String from, String to, String data)
+    public void send(String from, String to, String data) throws IOException
     {
         Packet packet = new Packet(from, to, data);
         this.send(packet);
