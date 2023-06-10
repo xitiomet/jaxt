@@ -1,12 +1,18 @@
 package org.openstatic.kiss;
 
 import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class Packet 
 {
 	private String source, destination;
 	private String[] path;
 	private byte[] payload;
+	private Date timestamp;
 
     private final int AX25_CRC_CORRECT   = 0xF0B8;
 	private final int CRC_CCITT_INIT_VAL = 0xFFFF;
@@ -74,9 +80,11 @@ public class Packet
 	
 	// this constructor is used for sending packets from raw bytes
 	public Packet(byte[] bytes) 
-	{	
-	  assert (crc == CRC_CCITT_INIT_VAL);
-	  assert (bytes.length+2 <= packet.length);
+	{
+		this.timestamp = new Date(System.currentTimeMillis());
+
+	  	assert (crc == CRC_CCITT_INIT_VAL);
+	  	assert (bytes.length+2 <= packet.length);
 	  
 		for (int i=0; i<bytes.length; i++) {
 			packet[size] = bytes[i];
@@ -84,14 +92,14 @@ public class Packet
 			size++;
 		}
 		
-	  int crcl = (crc & 0xff) ^ 0xff;
-	  int crch = (crc >> 8) ^ 0xff;
+	  	int crcl = (crc & 0xff) ^ 0xff;
+	  	int crch = (crc >> 8) ^ 0xff;
 
-	  packet[size] = (byte) crcl;
+	  	packet[size] = (byte) crcl;
 		crc_ccitt_update(packet[size]);
 		size++;
 
-	  packet[size] = (byte) crch;
+	  	packet[size] = (byte) crch;
 		crc_ccitt_update(packet[size]);
 		size++;
 		
@@ -111,6 +119,11 @@ public class Packet
 			          int      protocol,
 			          byte[]   payload) 
     {
+		this.timestamp = new Date(System.currentTimeMillis());
+		this.payload = payload;
+		this.path = path;
+		this.source = source;
+		this.destination = destination;
 		int n = 7 + 7 + 7*path.length + 2 + payload.length;
 		byte[] bytes = new byte[n];
 		
@@ -118,9 +131,10 @@ public class Packet
 		
 		addCall(bytes, offset, destination, false);
 		offset += 7;
-		addCall(bytes, offset, source     , path==null || path.length==0);
+		addCall(bytes, offset, source, path==null || path.length==0);
 		offset += 7;
-		for (int i=0; i<path.length; i++) {
+		for (int i=0; i < path.length; i++) 
+		{
 			addCall(bytes, offset, path[i], i==path.length-1);
 			offset += 7;
 		}
@@ -138,7 +152,7 @@ public class Packet
 	    assert (crc == CRC_CCITT_INIT_VAL);
 	    assert (bytes.length+2 <= packet.length);
 	  
-		for (int i=0; i<bytes.length; i++) {
+		for (int i=0; i < bytes.length; i++) {
 			packet[size] = bytes[i];
 			crc_ccitt_update(packet[size]);
 			size++;
@@ -165,8 +179,9 @@ public class Packet
         char c = ' ';
         int ssid = 0;
 
-        for (i=0; i<6; i++) {
-            if (i<call.length())
+        for (i=0; i < 6; i++)
+		{
+            if (i < call.length())
                 c = call.charAt(i);
             else
                 call_ended = true;
@@ -177,12 +192,14 @@ public class Packet
             bytes[offset++] = (byte) (c << 1);
         }
 
-        for (i=0; i<call.length(); i++) { 
+        for (i=0; i < call.length(); i++)
+		{ 
             c = call.charAt(i);
-            if (c=='-' && i+1<call.length()) {
+            if (c=='-' && i+1<call.length()) 
+			{
                 ssid = Integer.parseInt(call.substring(i+1));
-            if (ssid > 15 || ssid < 0) ssid=0; // this is an error
-            break;
+           		if (ssid > 15 || ssid < 0) ssid=0; // this is an error
+            		break;
             }
         }
 
@@ -191,6 +208,11 @@ public class Packet
         bytes[offset++] = (byte) ssid;
 	}
 	
+	public Date getTimestamp()
+	{
+		return this.timestamp;
+	}
+
     public String getSourceCallsign()
     {
         return this.source;
@@ -217,7 +239,8 @@ public class Packet
                 break;
             }
         }
-        return new String(Arrays.copyOf(payload, firstNull - 2));
+		if (firstNull == 0) firstNull = payload.length;
+        return new String(Arrays.copyOf(payload, firstNull));
     }
 	
 	private static String parseCall(byte[] packet, int offset) 
@@ -244,9 +267,9 @@ public class Packet
 	public void parse() 
     {
 		int offset= 0;
-		destination = parseCall(packet,offset);
+		this.destination = parseCall(packet,offset);
 		offset += 7;
-		source      = parseCall(packet,offset);
+		this.source = parseCall(packet,offset);
 		offset += 7;
 		
 		int repeaters = 0;
@@ -265,7 +288,7 @@ public class Packet
 		}
 		
 		offset += 2; // skip PID, control
-		payload = Arrays.copyOfRange(packet, offset, offset + (size - 2)); // chop off CRC
+		this.payload = Arrays.copyOfRange(packet, offset, (size - 2)); // chop off CRC
 	}
 	
     private void crc_ccitt_update(byte b) 
@@ -318,5 +341,25 @@ public class Packet
 		}
 		builder.append("]");
 		return builder.toString();
-	}	
+	}
+
+	public JSONObject toJSONObject()
+	{
+		JSONObject ro = new JSONObject();
+		ro.put("source", this.getSourceCallsign());
+		ro.put("destination", this.getDestinationCallsign());
+		ro.put("data", this.getPayloadAsString());
+		if (this.path != null)
+		{
+			if (this.path.length > 0)
+				ro.put("path", new JSONArray(this.path));
+		}
+		ro.put("timestamp", this.timestamp.getTime());
+		return ro;
+	}
+
+	public String toLogString()
+	{
+		return this.getSourceCallsign() + " > " + this.getDestinationCallsign() + ": " + this.getPayloadAsString();
+	}
 }

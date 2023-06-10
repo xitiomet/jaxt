@@ -62,6 +62,7 @@ public class KISSClient implements Runnable
             this.inputStream = this.socket.getInputStream();
             this.outputStream = this.socket.getOutputStream();
             this.connected = true;
+            this.listeners.forEach((l) -> l.onKISSConnect(this.address));
         } catch (Exception e) {}
     }
 
@@ -90,7 +91,8 @@ public class KISSClient implements Runnable
                     this.kissProcessor.receive(bb);
                 }
             } catch (Exception e) {
-               this.connected = false;
+                e.printStackTrace(System.err);
+                fireDisconnect();
             }
             try
             {
@@ -105,14 +107,23 @@ public class KISSClient implements Runnable
         {
             this.outputStream.write(data);
         } catch (Exception e) {
+            fireDisconnect();
+        }
+    }
+
+    private void fireDisconnect()
+    {
+        if (this.connected)
+        {
             this.connected = false;
+            this.listeners.forEach((l) -> l.onKISSDisconnect(this.address));
         }
     }
 
     protected void onKPReceive(byte[] frame) 
     {
         Packet packet = new Packet(frame);
-        this.listeners.forEach((l) -> l.onReceived(packet));        
+        this.listeners.forEach((l) -> l.onReceived(packet));
     }
 
     private void send(byte[] data) throws IOException
