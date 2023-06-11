@@ -12,7 +12,8 @@
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
     <imageName>java-kiss</imageName>
-        <graalvm.version>22.1.0</graalvm.version>
+    <graalvm.version>22.3.0</graalvm.version>
+    <jettyVersion>9.4.40.v20210413</jettyVersion>
   </properties>
   <dependencies>
     <dependency>
@@ -28,13 +29,49 @@
     <dependency>
         <groupId>org.json</groupId>
         <artifactId>json</artifactId>
-        <version>20160810</version>
+        <version>20230227</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
     <dependency>
         <groupId>commons-cli</groupId>
         <artifactId>commons-cli</artifactId>
         <version>1.4</version>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-server</artifactId>
+        <version>${jettyVersion}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-servlet</artifactId>
+        <version>${jettyVersion}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <version>${jettyVersion}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-http</artifactId>
+        <version>${jettyVersion}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.jetty.websocket</groupId>
+        <artifactId>websocket-servlet</artifactId>
+        <version>${jettyVersion}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.jetty.websocket</groupId>
+        <artifactId>websocket-server</artifactId>
+        <version>${jettyVersion}</version>
+    </dependency>
+<!-- https://mvnrepository.com/artifact/org.jmdns/jmdns -->
+    <dependency>
+        <groupId>org.jmdns</groupId>
+        <artifactId>jmdns</artifactId>
+        <version>3.5.1</version>
     </dependency>
   </dependencies>
   <reporting>
@@ -97,6 +134,160 @@
                 </execution>
               </executions>
           </plugin>
+        <plugin>
+            <groupId>org.graalvm.nativeimage</groupId>
+            <artifactId>native-image-maven-plugin</artifactId>
+            <version>21.2.0</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>native-image</goal>
+                    </goals>
+                    <phase>package</phase>
+                </execution>
+            </executions>
+            <configuration>
+                <skip>false</skip>
+                <imageName>${imageName}</imageName>
+                <mainClass>${mainClass}</mainClass>
+                <buildArgs>
+                    --no-server
+                    --no-fallback
+                    --enable-https
+                    --enable-http
+                    -H:+UseServiceLoaderFeature
+                    --allow-incomplete-classpath
+                    --report-unsupported-elements-at-runtime
+                    -H:+ReportExceptionStackTraces
+                </buildArgs>
+            </configuration>
+       </plugin>
+        <plugin>
+            <artifactId>jdeb</artifactId>
+            <groupId>org.vafer</groupId>
+            <version>1.8</version>
+            <executions>
+                <!-- build native image debian package -->
+                <execution>
+                    <id>native-debian-package</id>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>jdeb</goal>
+                    </goals>
+                    <configuration>
+                        <verbose>true</verbose>
+                        <snapshotExpand>true</snapshotExpand>
+                        <!-- expand "SNAPSHOT" to what is in the "USER" env variable -->
+                        <snapshotEnv>USER</snapshotEnv>
+                        <controlDir>${project.basedir}/src/deb/control-native</controlDir>
+                        <deb>${project.build.directory}/${project.artifactId}-${project.version}-native.deb</deb>
+                        <dataSet>
+                            <data>
+                              <src>${project.build.directory}/${imageName}</src>
+                              <type>file</type>
+                              <mapper>
+                                <type>perm</type>
+                                <prefix>/usr/bin</prefix>
+                                <user>loader</user>
+                                <group>loader</group>
+                                <filemode>755</filemode>
+                              </mapper>
+                            </data>
+                            <data>
+                                <src>${project.basedir}/src/main/resources/icon-64.png</src>
+                                <type>file</type>
+                                <mapper>
+                                    <type>perm</type>
+                                    <prefix>/usr/share/icons/${imageName}</prefix>
+                                    <user>loader</user>
+                                    <group>loader</group>
+                                    <filemode>755</filemode>
+                                </mapper>
+                            </data>
+                            <data>
+                                <src>${project.basedir}/src/deb/${imageName}.desktop</src>
+                                <type>file</type>
+                                <mapper>
+                                    <type>perm</type>
+                                    <prefix>/usr/share/applications</prefix>
+                                    <user>loader</user>
+                                    <group>loader</group>
+                                    <filemode>755</filemode>
+                                </mapper>
+                            </data>
+                        </dataSet>
+                    </configuration>
+                </execution>
+                <!-- build java debian package -->
+                <execution>
+                    <id>debian-package</id>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>jdeb</goal>
+                    </goals>
+                    <configuration>
+                        <verbose>true</verbose>
+                        <snapshotExpand>true</snapshotExpand>
+                        <!-- expand "SNAPSHOT" to what is in the "USER" env variable -->
+                        <snapshotEnv>USER</snapshotEnv>
+                        <controlDir>${project.basedir}/src/deb/control-java</controlDir>
+                        <deb>${project.build.directory}/${project.artifactId}-${project.version}-java.deb</deb>
+                        <dataSet>
+                            <data>
+                              <src>${project.build.directory}/${project.build.finalName}.jar</src>
+                              <type>file</type>
+                              <mapper>
+                                <type>perm</type>
+                                <prefix>/usr/share/java</prefix>
+                                <user>loader</user>
+                                <group>loader</group>
+                                <filemode>755</filemode>
+                              </mapper>
+                            </data>
+                            <data>
+                              <type>link</type>
+                              <symlink>true</symlink>
+                              <linkName>/usr/share/java/${imageName}.jar</linkName>
+                              <linkTarget>/usr/share/java/${project.build.finalName}.jar</linkTarget>
+                            </data>
+                            <data>
+                              <src>${project.basedir}/src/deb/${imageName}</src>
+                              <type>file</type>
+                              <mapper>
+                                <type>perm</type>
+                                <prefix>/usr/bin</prefix>
+                                <user>loader</user>
+                                <group>loader</group>
+                                <filemode>755</filemode>
+                              </mapper>
+                            </data>
+                            <data>
+                                <src>${project.basedir}/src/main/resources/icon-64.png</src>
+                                <type>file</type>
+                                <mapper>
+                                    <type>perm</type>
+                                    <prefix>/usr/share/icons/${imageName}</prefix>
+                                    <user>loader</user>
+                                    <group>loader</group>
+                                    <filemode>755</filemode>
+                                </mapper>
+                            </data>
+                            <data>
+                                <src>${project.basedir}/src/deb/${imageName}.desktop</src>
+                                <type>file</type>
+                                <mapper>
+                                    <type>perm</type>
+                                    <prefix>/usr/share/applications</prefix>
+                                    <user>loader</user>
+                                    <group>loader</group>
+                                    <filemode>755</filemode>
+                                </mapper>
+                            </data>
+                        </dataSet>
+                    </configuration>
+                </execution>
+            </executions>
+       </plugin>
        <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
@@ -104,6 +295,53 @@
             <configuration>
             </configuration>
        </plugin>
+       <plugin>
+          <groupId>io.github.fvarrui</groupId>
+          <artifactId>javapackager</artifactId>
+          <version>1.7.0</version>
+          <executions>
+              <execution>
+                  <phase>package</phase>
+                  <goals>
+                      <goal>package</goal>
+                  </goals>
+                  <configuration>
+                      <!-- mandatory -->
+                      <name>${imageName}-${project.version}</name>
+                      <mainClass>${mainClass}</mainClass>
+                      <!-- optional -->
+                      <copyDependencies>true</copyDependencies>
+                      <generateInstaller>true</generateInstaller>
+                      <administratorRequired>false</administratorRequired>
+                      <platform>linux</platform>
+                      <bundleJre>true</bundleJre>
+                      <additionalResources>
+                          <additionalResource>${project.basedir}/target/natives/</additionalResource>
+                          <additionalResource>${project.basedir}/src/main/resources/${imageName}.l4j.ini</additionalResource>
+                      </additionalResources>
+                      <additionalModules>
+                        <additionalModule>jdk.crypto.ec</additionalModule>
+                        <additionalModule>java.base</additionalModule>
+                        <additionalModule>java.logging</additionalModule>
+                        <additionalModule>java.management</additionalModule>
+                        <additionalModule>java.naming</additionalModule>
+                        <additionalModule>java.security.jgss</additionalModule>
+                        <additionalModule>java.xml</additionalModule>
+                      </additionalModules>
+                      <linuxConfig>
+                        <pngFile>${project.basedir}/src/main/resources/${imageName}.png</pngFile>
+                        <generateAppImage>true</generateAppImage>
+                        <generateDeb>false</generateDeb>
+                        <generateRpm>false</generateRpm>
+                        <wrapJar>false</wrapJar>
+                        <categories>
+                            <category>Utility</category>
+                        </categories>
+                    </linuxConfig>
+                  </configuration>
+              </execution>
+          </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

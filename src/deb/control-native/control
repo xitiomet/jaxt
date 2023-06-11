@@ -1,0 +1,7 @@
+Package: java-kiss
+Version: 1.0
+Section: misc
+Priority: low
+Architecture: all
+Description: A Fun Program
+Maintainer: openstatic.org <support@openstatic.org>

@@ -75,8 +75,8 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         Option testOption = new Option("t", "test", true, "Send test packets");
         testOption.setOptionalArg(true);
         options.addOption(testOption);
-        options.addOption(new Option("h", "host", true, "Specify TNC host"));
-        options.addOption(new Option("p", "port", true, "KISS Port"));
+        options.addOption(new Option("h", "host", true, "Specify TNC host (Default: 127.0.0.1)"));
+        options.addOption(new Option("p", "port", true, "KISS Port (Default: 8100)"));
         options.addOption(new Option("f", "config-file", true, "Specify config file (.json)"));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
         options.addOption(new Option("?", "help", false, "Shows help"));
