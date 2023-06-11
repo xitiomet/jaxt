@@ -51,7 +51,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 {
                     payload = settings.optString("testPayload").replaceAll(Pattern.quote("{{ts}}"), tsString).replaceAll(Pattern.quote("{{seq}}"), tsString);
                 }
-                Packet packet = new Packet("XXX", "XYZ", payload);
+                Packet packet = new Packet(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
                 kClient.send(packet);
 
                 jsonLogAppend("tx.json", packet.toJSONObject());
@@ -72,17 +72,26 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         CommandLine cmd = null;
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();
-        Option testOption = new Option("t", "test", true, "Send test packets");
+        Option testOption = new Option("t", "test", true, "Send test packets (optional parameter interval in seconds)");
         testOption.setOptionalArg(true);
         options.addOption(testOption);
         options.addOption(new Option("h", "host", true, "Specify TNC host (Default: 127.0.0.1)"));
         options.addOption(new Option("p", "port", true, "KISS Port (Default: 8100)"));
         options.addOption(new Option("f", "config-file", true, "Specify config file (.json)"));
+        options.addOption(new Option("s", "source", true, "Source callsign"));
+        options.addOption(new Option("d", "destination", true, "Destination callsign"));
+        options.addOption(new Option("m", "test-payload", true, "Test payload to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
         options.addOption(new Option("?", "help", false, "Shows help"));
 
         JavaKISSMain.settings = new JSONObject();
         JavaKISSMain.settingsFile = null;
+        File homeSettings = new File(System.getProperty("user.home"),".java-kiss.json");
+        if (homeSettings.exists())
+        {
+            JavaKISSMain.settingsFile = homeSettings;
+            JavaKISSMain.settings = loadJSONObject(homeSettings);
+        }
         try
         {
             cmd = parser.parse(options, args);
@@ -104,6 +113,11 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 settings.put("txTestDelay", Long.valueOf(cmd.getOptionValue("t", "10")).longValue() * 1000l);
             }
 
+            if (cmd.hasOption("m"))
+            {
+                settings.put("testPayload", cmd.getOptionValue("m"));
+            }
+
             if (cmd.hasOption("v"))
             {
                 settings.put("verbose", true);
@@ -112,6 +126,16 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             if (cmd.hasOption("h"))
             {
                 settings.put("host", cmd.getOptionValue("h"));
+            }
+
+            if (cmd.hasOption("s"))
+            {
+                settings.put("source", cmd.getOptionValue("s"));
+            }
+            
+            if (cmd.hasOption("d"))
+            {
+                settings.put("destination", cmd.getOptionValue("d"));
             }
 
             if (cmd.hasOption("p"))
@@ -125,6 +149,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             }
             KISSClient kClient = new KISSClient(settings.optString("host"), settings.optInt("port",8100));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
+            saveSettings();
             Runtime.getRuntime().addShutdownHook(new Thread() 
             { 
                 public void run() 
