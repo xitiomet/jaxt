@@ -149,7 +149,10 @@ public class KISSClient implements Runnable
     protected void onKPReceive(byte[] frame) 
     {
         Packet packet = new Packet(frame);
-        this.listeners.forEach((l) -> l.onReceived(packet));
+        if (packet.isValid())
+        {
+            this.listeners.forEach((l) -> l.onReceived(packet));
+        }
     }
 
     private void send(byte[] data) throws IOException

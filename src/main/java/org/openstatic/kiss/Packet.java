@@ -307,7 +307,7 @@ public class Packet
 		return true;
 	}
 	
-	public boolean terminate() 
+	private boolean terminate() 
     {
 		if (size < 18) return false; // at least source, destination, control, pid, FCS.
 		if (crc == AX25_CRC_CORRECT) {
@@ -315,6 +315,22 @@ public class Packet
 			return true;
 		} else
 			return false;
+	}
+
+	public boolean isValid()
+	{
+		return !containsNonKeyboardChars(this.source) && !containsNonKeyboardChars(this.destination) && terminate();
+	}
+
+	private static boolean containsNonKeyboardChars(String str) {
+		String keyboardChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`~!@#$%^&*()-_=+[{]}\\|;:'\",<.>/? ";
+		for (int i = 0; i < str.length(); i++) {
+			char c = str.charAt(i);
+			if (keyboardChars.indexOf(c) == -1) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override

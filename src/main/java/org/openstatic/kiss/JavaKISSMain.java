@@ -81,8 +81,8 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
         options.addOption(new Option("?", "help", false, "Shows help"));
 
-        JavaKISSMain.settingsFile = new File(System.getProperty("user.home"),".java-kiss-settings.json");
-        JavaKISSMain.settings = loadJSONObject(settingsFile);
+        JavaKISSMain.settings = new JSONObject();
+        JavaKISSMain.settingsFile = null;
         try
         {
             cmd = parser.parse(options, args);
@@ -235,7 +235,8 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     {
         if (JavaKISSMain.settings.has("txTest"))
             JavaKISSMain.settings.remove("txTest");
-        saveJSONObject(JavaKISSMain.settingsFile, JavaKISSMain.settings);
+        if (JavaKISSMain.settingsFile != null)
+            saveJSONObject(JavaKISSMain.settingsFile, JavaKISSMain.settings);
     }
 
     public static JSONObject loadJSONObject(File file)
