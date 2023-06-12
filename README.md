@@ -17,6 +17,8 @@ Java AX25 Tool: A Java KISS TNC Client implementation
  -d,--destination <arg>    Destination callsign
  -f,--config-file <arg>    Specify config file (.json)
  -h,--host <arg>           Specify TNC host (Default: 127.0.0.1)
+ -l,--logging <arg>        Enable Logging, and optionally specify a
+                           directory
  -m,--test-payload <arg>   Test payload to send on test interval. {{ts}}
                            for timestamp, {{seq}} for sequence.
  -p,--port <arg>           KISS Port (Default: 8100)
@@ -24,7 +26,7 @@ Java AX25 Tool: A Java KISS TNC Client implementation
  -t,--test <arg>           Send test packets (optional parameter interval
                            in seconds)
  -v,--verbose              Shows Packets
- -x,--post                 HTTP Post packets received as JSON to url
+ -x,--post <arg>           HTTP POST packets received as JSON to url
  ```
 
  If you wish to avoid a lot of command line arguments, the config file format looks like this save as .json:

@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -14,6 +15,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.apache.commons.cli.*;
@@ -82,11 +84,14 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         options.addOption(new Option("h", "host", true, "Specify TNC host (Default: 127.0.0.1)"));
         options.addOption(new Option("p", "port", true, "KISS Port (Default: 8100)"));
         options.addOption(new Option("f", "config-file", true, "Specify config file (.json)"));
+        Option loggingOption = new Option("l", "logs", true, "Enable Logging, and optionally specify a directory");
+        loggingOption.setOptionalArg(true);
+        options.addOption(loggingOption);
         options.addOption(new Option("s", "source", true, "Source callsign"));
         options.addOption(new Option("d", "destination", true, "Destination callsign"));
         options.addOption(new Option("m", "test-payload", true, "Test payload to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
-        options.addOption(new Option("x", "post", false, "HTTP Post packets received as JSON to url"));
+        options.addOption(new Option("x", "post", true, "HTTP POST packets received as JSON to url"));
         options.addOption(new Option("?", "help", false, "Shows help"));
 
         JavaKISSMain.settings = new JSONObject();
@@ -148,14 +153,22 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 settings.put("destination", cmd.getOptionValue("d"));
             }
 
+            if (cmd.hasOption("l"))
+            {
+                settings.put("logPath", cmd.getOptionValue("l", "./jaxt-logs"));
+            }
+
             if (cmd.hasOption("p"))
             {
                 settings.put("port", Integer.valueOf(cmd.getOptionValue("p")).intValue());
             }
-            JavaKISSMain.logsFolder = new File(JavaKISSMain.settings.optString("logPath", "./jaxt-logs"));
-            if (!JavaKISSMain.logsFolder.exists())
+            if (JavaKISSMain.settings.has("logPath"))
             {
-                JavaKISSMain.logsFolder.mkdirs();
+                JavaKISSMain.logsFolder = new File(JavaKISSMain.settings.optString("logPath", "./jaxt-logs"));
+                if (!JavaKISSMain.logsFolder.exists())
+                {
+                    JavaKISSMain.logsFolder.mkdirs();
+                }
             }
             KISSClient kClient = new KISSClient(settings.optString("host"), settings.optInt("port",8100));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
@@ -198,75 +211,85 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
     public static synchronized void logAppend(String filename, String text)
     {
-        try
-        {
-            String pattern = "HH:mm:ss yyyy-MM-dd";
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-            File logFile = new File(JavaKISSMain.logsFolder, filename);
-            File logFileParent = logFile.getParentFile();
-            if (!logFileParent.exists())
-                logFileParent.mkdirs();
-            FileOutputStream logOutputStream = new FileOutputStream(logFile, true);;
-            PrintWriter logWriter = new PrintWriter(logOutputStream, true, Charset.forName("UTF-8"));
-            String logText = "[" + simpleDateFormat.format(new Date(System.currentTimeMillis())) + "] " + text;
-            logWriter.println(logText);
-            logWriter.flush();
-            logWriter.close();
-            logOutputStream.close();
-            if (JavaKISSMain.settings.optBoolean("verbose", false))
-                System.err.println(logText);
-        } catch (Exception e) {
+        String pattern = "HH:mm:ss yyyy-MM-dd";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+        String logText = "[" + simpleDateFormat.format(new Date(System.currentTimeMillis())) + "] " + text;
+        if (JavaKISSMain.logsFolder != null)
+        {        
+            try
+            {
+                
+                File logFile = new File(JavaKISSMain.logsFolder, filename);
+                File logFileParent = logFile.getParentFile();
+                if (!logFileParent.exists())
+                    logFileParent.mkdirs();
+                FileOutputStream logOutputStream = new FileOutputStream(logFile, true);;
+                PrintWriter logWriter = new PrintWriter(logOutputStream, true, Charset.forName("UTF-8"));
+                logWriter.println(logText);
+                logWriter.flush();
+                logWriter.close();
+                logOutputStream.close();
+            } catch (Exception e) {
 
+            }
         }
+        if (JavaKISSMain.settings.optBoolean("verbose", false))
+                System.err.println(logText);
     }
 
     public static synchronized void jsonLogAppend(String filename, JSONObject object)
     {
-        try
+        if (JavaKISSMain.logsFolder != null)
         {
             Date now = new Date(object.optLong("timestamp", (new Date(System.currentTimeMillis())).getTime()));
             String pattern = "yyyy-MM-dd HH:mm:ss";
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-            File logFile = new File(JavaKISSMain.logsFolder, filename);
-            File logFileParent = logFile.getParentFile();
-            if (!logFileParent.exists())
-                logFileParent.mkdirs();
-            FileOutputStream logOutputStream = new FileOutputStream(logFile, true);;
-            PrintWriter logWriter = new PrintWriter(logOutputStream, true, Charset.forName("UTF-8"));
-            object.put("localTime", simpleDateFormat.format(now));
-            logWriter.println(object.toString());
-            logWriter.flush();
-            logWriter.close();
-            logOutputStream.close();
-        } catch (Exception e) {
-            log(e);
+            try
+            {
+                File logFile = new File(JavaKISSMain.logsFolder, filename);
+                File logFileParent = logFile.getParentFile();
+                if (!logFileParent.exists())
+                    logFileParent.mkdirs();
+                FileOutputStream logOutputStream = new FileOutputStream(logFile, true);;
+                PrintWriter logWriter = new PrintWriter(logOutputStream, true, Charset.forName("UTF-8"));
+                object.put("localTime", simpleDateFormat.format(now));
+                logWriter.println(object.toString());
+                logWriter.flush();
+                logWriter.close();
+                logOutputStream.close();
+            } catch (Exception e) {
+                log(e);
+            }
         }
     }
 
     public static void log(Exception e)
     {
-        try
+        if (JavaKISSMain.logsFolder != null)
         {
-            String msg = e.getMessage();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PrintStream ps = new PrintStream(baos, true, Charset.forName("UTF-8"));
-            e.printStackTrace(ps);
-            ps.flush();
+            try
+            {
+                String msg = e.getMessage();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                PrintStream ps = new PrintStream(baos, true, Charset.forName("UTF-8"));
+                e.printStackTrace(ps);
+                ps.flush();
 
-            String pattern = "HH:mm:ss yyyy-MM-dd";
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-            File logFile = new File(JavaKISSMain.logsFolder, "exceptions.log");
-            File logFileParent = logFile.getParentFile();
-            if (!logFileParent.exists())
-                logFileParent.mkdirs();
-            FileOutputStream logOutputStream = new FileOutputStream(logFile, true);;
-            PrintWriter logWriter = new PrintWriter(logOutputStream, true, Charset.forName("UTF-8"));
-            String logText = "[" + simpleDateFormat.format(new Date(System.currentTimeMillis())) + "] " + msg + "\n" + baos.toString();
-            logWriter.println(logText);
-            logWriter.flush();
-            logWriter.close();
-            logOutputStream.close();
-        } catch (Exception e2) {
+                String pattern = "HH:mm:ss yyyy-MM-dd";
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+                File logFile = new File(JavaKISSMain.logsFolder, "exceptions.log");
+                File logFileParent = logFile.getParentFile();
+                if (!logFileParent.exists())
+                    logFileParent.mkdirs();
+                FileOutputStream logOutputStream = new FileOutputStream(logFile, true);;
+                PrintWriter logWriter = new PrintWriter(logOutputStream, true, Charset.forName("UTF-8"));
+                String logText = "[" + simpleDateFormat.format(new Date(System.currentTimeMillis())) + "] " + msg + "\n" + baos.toString();
+                logWriter.println(logText);
+                logWriter.flush();
+                logWriter.close();
+                logOutputStream.close();
+            } catch (Exception e2) {
+            }
         }
     }
 
@@ -314,14 +337,19 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     {
         try
         {
-            JavaKISSMain.logAppend("main.log", "[POST] " + url);
             HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
             con.setRequestMethod("POST");
             con.setRequestProperty("Content-Type", "application/json");
             con.setDoOutput(true);
             con.getOutputStream().write(packet.toJSONObject().toString().getBytes());
-            String output = new BufferedReader(new InputStreamReader(con.getInputStream())).lines().reduce((a, b) -> a + b).get();
-            JavaKISSMain.logAppend("main.log", "[POST RESPONSE] " + url + " - " + output);
+            InputStream inputStream = con.getInputStream();
+            int responseCode = con.getResponseCode();
+            InputStreamReader isr = new InputStreamReader(inputStream);
+            Optional<String> optResponse = new BufferedReader(isr).lines().reduce((a, b) -> a + b);
+            String output = "NO OUTPUT";
+            if (optResponse.isPresent())
+                output = optResponse.get();
+            JavaKISSMain.logAppend("main.log", "[POST " + String.valueOf(responseCode) + "] " + url + " - " + output);
         } catch (Exception e) {
             JavaKISSMain.logAppend("main.log", "[POST ERROR] " + url);
             log(e);

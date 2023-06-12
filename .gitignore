@@ -2,5 +2,5 @@
 *.class
 target/
 dependency-reduced-pom.xml
-java-kiss-logs/
+jaxt-logs/
 upload.sh
