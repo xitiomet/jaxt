@@ -148,7 +148,7 @@ public class KISSClient implements Runnable
 
     protected void onKPReceive(byte[] frame) 
     {
-        Packet packet = new Packet(frame);
+        AX25Packet packet = new AX25Packet(frame);
         if (packet.isValid())
         {
             this.listeners.forEach((l) -> l.onReceived(packet));
@@ -164,14 +164,14 @@ public class KISSClient implements Runnable
         this.kissProcessor.completeKissPacket();
     }
 
-    public void send(Packet packet) throws IOException
+    public void send(AX25Packet packet) throws IOException
     {
         this.send(packet.bytesWithoutCRC());
     }
 
     public void send(String from, String to, String data) throws IOException
     {
-        Packet packet = new Packet(from, to, data);
+        AX25Packet packet = new AX25Packet(from, to, data);
         this.send(packet);
     }
 }

@@ -51,7 +51,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 {
                     payload = settings.optString("testPayload").replaceAll(Pattern.quote("{{ts}}"), tsString).replaceAll(Pattern.quote("{{seq}}"), tsString);
                 }
-                Packet packet = new Packet(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
+                AX25Packet packet = new AX25Packet(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
                 kClient.send(packet);
 
                 jsonLogAppend("tx.json", packet.toJSONObject());
@@ -171,7 +171,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     }
 
     @Override
-    public void onReceived(Packet packet)
+    public void onReceived(AX25Packet packet)
     {
         JSONObject logEntry = packet.toJSONObject();
         jsonLogAppend("rx.json", logEntry);

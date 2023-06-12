@@ -6,7 +6,7 @@ import java.util.Date;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class Packet 
+public class AX25Packet 
 {
 	private String source, destination;
 	private String[] path;
@@ -78,7 +78,7 @@ public class Packet
 	}
 	
 	// this constructor is used for sending packets from raw bytes
-	public Packet(byte[] bytes) 
+	public AX25Packet(byte[] bytes) 
 	{
 		this.timestamp = new Date(System.currentTimeMillis());
 
@@ -106,12 +106,12 @@ public class Packet
         parse();
 	}
 
-    public Packet(String source, String destination, String payload)
+    public AX25Packet(String source, String destination, String payload)
     {
-        this(destination, source, new String[] {}, Packet.AX25_CONTROL_APRS, Packet.AX25_PROTOCOL_NO_LAYER_3, payload.getBytes(Charset.forName("US-ASCII")));
+        this(destination, source, new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, payload.getBytes(Charset.forName("US-ASCII")));
     }
 	
-	public Packet(String destination,
+	public AX25Packet(String destination,
 			          String source,
 			          String[] path,
 			          int      control,
