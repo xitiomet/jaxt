@@ -1,12 +1,16 @@
 package org.openstatic.kiss;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -82,11 +86,12 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         options.addOption(new Option("d", "destination", true, "Destination callsign"));
         options.addOption(new Option("m", "test-payload", true, "Test payload to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
+        options.addOption(new Option("x", "post", false, "HTTP Post packets received as JSON to url"));
         options.addOption(new Option("?", "help", false, "Shows help"));
 
         JavaKISSMain.settings = new JSONObject();
         JavaKISSMain.settingsFile = null;
-        File homeSettings = new File(System.getProperty("user.home"),".java-kiss.json");
+        File homeSettings = new File(System.getProperty("user.home"),".jaxt.json");
         if (homeSettings.exists())
         {
             JavaKISSMain.settingsFile = homeSettings;
@@ -128,6 +133,11 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 settings.put("host", cmd.getOptionValue("h"));
             }
 
+            if (cmd.hasOption("x"))
+            {
+                settings.put("postUrl", cmd.getOptionValue("x"));
+            }
+
             if (cmd.hasOption("s"))
             {
                 settings.put("source", cmd.getOptionValue("s"));
@@ -142,7 +152,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             {
                 settings.put("port", Integer.valueOf(cmd.getOptionValue("p")).intValue());
             }
-            JavaKISSMain.logsFolder = new File(JavaKISSMain.settings.optString("logPath", "./java-kiss-logs"));
+            JavaKISSMain.logsFolder = new File(JavaKISSMain.settings.optString("logPath", "./jaxt-logs"));
             if (!JavaKISSMain.logsFolder.exists())
             {
                 JavaKISSMain.logsFolder.mkdirs();
@@ -166,7 +176,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     public static void showHelp(Options options)
     {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( "java-kiss", "Java KISS: A Java KISS TNC Client implementation", options, "" );
+        formatter.printHelp( "jaxt", "Java AX25 Tool: A Java KISS TNC Client implementation", options, "" );
         System.exit(0);
     }
 
@@ -179,6 +189,10 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         if (settings.optBoolean("verbose", false))
         {
             System.err.println("[" + this.simpleDateFormat.format(packet.getTimestamp()) + "] (Rx) " + packet.toLogString());
+        }
+        if (settings.has("postUrl"))
+        {
+            JavaKISSMain.postAX25Packet(settings.optString("postUrl"), packet);
         }
     }
 
@@ -293,6 +307,24 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             ps.close();
             fos.close();
         } catch (Exception e) {
+        }
+    }
+
+    public static void postAX25Packet(String url, AX25Packet packet)
+    {
+        try
+        {
+            JavaKISSMain.logAppend("main.log", "[POST] " + url);
+            HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setDoOutput(true);
+            con.getOutputStream().write(packet.toJSONObject().toString().getBytes());
+            String output = new BufferedReader(new InputStreamReader(con.getInputStream())).lines().reduce((a, b) -> a + b).get();
+            JavaKISSMain.logAppend("main.log", "[POST RESPONSE] " + url + " - " + output);
+        } catch (Exception e) {
+            JavaKISSMain.logAppend("main.log", "[POST ERROR] " + url);
+            log(e);
         }
     }
 

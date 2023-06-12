@@ -363,7 +363,7 @@ public class AX25Packet
 		JSONObject ro = new JSONObject();
 		ro.put("source", this.getSourceCallsign());
 		ro.put("destination", this.getDestinationCallsign());
-		ro.put("data", this.getPayloadAsString());
+		ro.put("payload", this.getPayloadAsString());
 		if (this.path != null)
 		{
 			if (this.path.length > 0)
