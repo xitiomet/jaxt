@@ -1,9 +1,9 @@
 [Desktop Entry]
 Version=1.0
-Name=Java KISS
+Name=Java AX25 Tool
 Comment=A Fun Program
-Exec=/usr/bin/java-kiss
-Icon=/usr/share/icons/java-kiss/icon-64.png
+Exec=/usr/bin/jaxt
+Icon=/usr/share/icons/jaxt/icon-64.png
 Terminal=true
 Type=Application
 Categories=Utility;Application;
