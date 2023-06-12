@@ -38,9 +38,9 @@ Java AX25 Tool: A Java KISS TNC Client implementation
     "verbose": true,
     "source": "NOCALL",
     "destination": "NOCALL",
-    "testPayload": "I am sending message #{{seq}} at {{ts}}",
+    "payload": "I am sending message #{{seq}} at {{ts}}",
     "txTest": false,
-    "txTestDelay": 10000,
+    "txTestInterval": 10000,
     "postUrl": "https://mywebsite.com/payloadhandler",
     "logPath": "./jaxt-logs/"
 }
@@ -54,3 +54,21 @@ In the "logPath" (which defaults to the current directory) you will find "main.l
 * "exceptions.log" - this log contains advanced debugging info for jaxt.
 * "rx.json" - A Log of all packets received using jaxt, each line represents one json object. Check out [JSON-Roller](https://openstatic.org/projects/json-roller/) for help parsing and filtering this information.
 * "tx.json" - A Log of all packets transmitted using jaxt, each line represents one json object. Check out [JSON-Roller](https://openstatic.org/projects/json-roller/) for help parsing and filtering this information.
+
+### Posting packets
+
+If you would like received packets to be posted to a webserver, you can use the -x option with a valid http/https url.
+
+The format of the post will be:
+
+Content-Type: application/json
+
+```json
+{
+    "source": "NOCALL1",
+    "destination": "NOCALL2",
+    "timestamp": 1686600213326,
+    "payload": "This is a transmission",
+    "path": ["WIDE1-1"]
+}
+```

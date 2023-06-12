@@ -49,13 +49,13 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         {
             try
             {
-                Thread.sleep(JavaKISSMain.settings.optLong("txTestDelay", 10000));
+                Thread.sleep(JavaKISSMain.settings.optLong("txTestInterval", 10000));
                 String tsString = String.valueOf(System.currentTimeMillis());
                 String seqString = String.valueOf(seq);
-                String payload = "This is a semi-long Test Transmission for the sake of testing packet radio @" + tsString + " #" + seqString;
-                if (settings.has("testPayload"))
+                String payload = "JAXT Test Transmission @" + tsString + " #" + seqString;
+                if (settings.has("payload"))
                 {
-                    payload = settings.optString("testPayload").replaceAll(Pattern.quote("{{ts}}"), tsString).replaceAll(Pattern.quote("{{seq}}"), tsString);
+                    payload = settings.optString("payload").replaceAll(Pattern.quote("{{ts}}"), tsString).replaceAll(Pattern.quote("{{seq}}"), tsString);
                 }
                 AX25Packet packet = new AX25Packet(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
                 kClient.send(packet);
@@ -78,7 +78,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         CommandLine cmd = null;
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();
-        Option testOption = new Option("t", "test", true, "Send test packets (optional parameter interval in seconds)");
+        Option testOption = new Option("t", "test", true, "Send test packets (optional parameter interval in seconds, default is 10 seconds)");
         testOption.setOptionalArg(true);
         options.addOption(testOption);
         options.addOption(new Option("h", "host", true, "Specify TNC host (Default: 127.0.0.1)"));
@@ -87,9 +87,9 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         Option loggingOption = new Option("l", "logs", true, "Enable Logging, and optionally specify a directory");
         loggingOption.setOptionalArg(true);
         options.addOption(loggingOption);
-        options.addOption(new Option("s", "source", true, "Source callsign"));
-        options.addOption(new Option("d", "destination", true, "Destination callsign"));
-        options.addOption(new Option("m", "test-payload", true, "Test payload to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
+        options.addOption(new Option("s", "source", true, "Source callsign (test payload)"));
+        options.addOption(new Option("d", "destination", true, "Destination callsign (test payload)"));
+        options.addOption(new Option("m", "payload", true, "Payload string to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
         options.addOption(new Option("x", "post", true, "HTTP POST packets received as JSON to url"));
         options.addOption(new Option("?", "help", false, "Shows help"));
@@ -120,12 +120,12 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             if (cmd.hasOption("t"))
             {
                 settings.put("txTest", true);
-                settings.put("txTestDelay", Long.valueOf(cmd.getOptionValue("t", "10")).longValue() * 1000l);
+                settings.put("txTestInterval", Long.valueOf(cmd.getOptionValue("t", "10")).longValue() * 1000l);
             }
 
             if (cmd.hasOption("m"))
             {
-                settings.put("testPayload", cmd.getOptionValue("m"));
+                settings.put("payload", cmd.getOptionValue("m"));
             }
 
             if (cmd.hasOption("v"))
