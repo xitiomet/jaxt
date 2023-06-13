@@ -66,6 +66,16 @@ public class APIWebServer implements AX25PacketListener
             JSONObject authJsonObject = new JSONObject();
             authJsonObject.put("action", "authOk");
             session.getRemote().sendStringByFuture(authJsonObject.toString());
+            if (APIWebServer.instance.kClient.isConnected())
+            {
+                JSONObject kissStateJsonObject = new JSONObject();
+                kissStateJsonObject.put("action", "kissConnected");
+                session.getRemote().sendStringByFuture(kissStateJsonObject.toString());
+            } else {
+                JSONObject kissStateJsonObject = new JSONObject();
+                kissStateJsonObject.put("action", "kissDisconnected");
+                session.getRemote().sendStringByFuture(kissStateJsonObject.toString());
+            }
         } else {
             JSONObject errorJsonObject = new JSONObject();
             errorJsonObject.put("action", "authFail");
@@ -247,16 +257,22 @@ public class APIWebServer implements AX25PacketListener
             JSONObject response = new JSONObject();
             if (JavaKISSMain.settings.optString("apiPassword","").equals(request.getParameter("apiPassword")))
             {
-                try 
+                if (APIWebServer.instance.kClient.isConnected())
                 {
-                    if (target.equals("/transmit/"))
+                    try 
                     {
-                        AX25Packet packet = new AX25Packet(request.getParameter("source"), request.getParameter("destination"), request.getParameter("payload"));
-                        APIWebServer.instance.kClient.send(packet);
-                        response.put("transmitted", packet.toJSONObject());
+                        if (target.equals("/transmit/"))
+                        {
+                            AX25Packet packet = new AX25Packet(request.getParameter("source"), request.getParameter("destination"), request.getParameter("payload"));
+                            APIWebServer.instance.kClient.send(packet);
+                            response.put("transmitted", packet.toJSONObject());
+                        }
+                    } catch (Exception x) {
+                        //x.printStackTrace(System.err);
+                        response.put("error", x.getLocalizedMessage());
                     }
-                } catch (Exception x) {
-                    x.printStackTrace(System.err);
+                } else {
+                    response.put("error", "Not connected to KISS server!");
                 }
             } else {
                 response.put("error", "Invalid apiPassword!");
@@ -270,7 +286,7 @@ public class APIWebServer implements AX25PacketListener
     public void onKISSConnect(InetSocketAddress socketAddress) 
     {
         JSONObject kissStateJsonObject = new JSONObject();
-        kissStateJsonObject.put("action", "kissConnect");
+        kissStateJsonObject.put("action", "kissConnected");
         broadcastJSONObject(kissStateJsonObject);
     }
 
@@ -278,14 +294,24 @@ public class APIWebServer implements AX25PacketListener
     public void onKISSDisconnect(InetSocketAddress socketAddress) 
     {
         JSONObject kissStateJsonObject = new JSONObject();
-        kissStateJsonObject.put("action", "kissDisconnect");
+        kissStateJsonObject.put("action", "kissDisconnected");
         broadcastJSONObject(kissStateJsonObject);
     }
 
     @Override
     public void onReceived(AX25Packet packet) 
     {
-        broadcastJSONObject(packet.toJSONObject());
+        JSONObject jPacket = packet.toJSONObject();
+        jPacket.put("direction", "rx");
+        broadcastJSONObject(jPacket);
+    }
+
+    @Override
+    public void onTransmit(AX25Packet packet)
+    {
+        JSONObject jPacket = packet.toJSONObject();
+        jPacket.put("direction", "tx");
+        broadcastJSONObject(jPacket);
     }
 
 }

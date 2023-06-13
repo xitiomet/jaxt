@@ -18,8 +18,10 @@ public class KISSClient implements Runnable
     private Thread connectionThread;
     private boolean keepRunning;
     private boolean connected;
+    private boolean allowKissPing;
     private KissProcessor kissProcessor;
     private ArrayList<AX25PacketListener> listeners;
+    private long lastKissPing;
 
     public KISSClient(String ipAddress, int port) throws IOException
     {
@@ -28,6 +30,12 @@ public class KISSClient implements Runnable
         this.kissProcessor = new KissProcessor(this, (byte) 8);
         this.address = new InetSocketAddress(ipAddress, port);
         this.listeners = new ArrayList<AX25PacketListener>();
+        this.allowKissPing = false;
+    }
+
+    public void setKissPing(boolean v)
+    {
+        this.allowKissPing = v;
     }
 
     public void addAX25PacketListener(AX25PacketListener listener)
@@ -56,6 +64,7 @@ public class KISSClient implements Runnable
 
     public void connect()
     {
+        //System.err.println("Connection attempt...");
         if (!this.connected)
         {
             try
@@ -70,6 +79,7 @@ public class KISSClient implements Runnable
             {
                 this.socket = SocketFactory.getDefault().createSocket();
                 this.socket.connect(this.address);
+                this.socket.setSoTimeout(4000);
                 this.inputStream = this.socket.getInputStream();
                 this.outputStream = this.socket.getOutputStream();
                 this.connected = true;
@@ -90,6 +100,20 @@ public class KISSClient implements Runnable
         }
     }
 
+    public void kissPing()
+    {
+        this.lastKissPing = System.currentTimeMillis();
+        try
+        {
+            //System.err.println("KissPING");
+            this.kissProcessor.startKissPacket(kissProcessor.KISS_CMD_NOCMD);
+            this.kissProcessor.completeKissPacket();
+        } catch (Exception e) {
+            //System.err.println("KissPING Error");
+            fireDisconnect();
+        }
+    }
+
     @Override
     public void run() 
     {
@@ -101,22 +125,30 @@ public class KISSClient implements Runnable
                 {
                     //System.err.println("Reconnect");
                     this.connect();
+                } else {
+                    if (System.currentTimeMillis() - this.lastKissPing > 10000 && this.allowKissPing)
+                    {
+                        kissPing();
+                    }
                 }
             } catch (Exception e) {
                 //e.printStackTrace(System.err);
             }
-            try
+            if (this.inputStream != null)
             {
-                int avail = this.inputStream.available();
-                if (avail > 0)
+                try
                 {
-                    byte[] bb = new byte[1024];
-                    this.inputStream.read(bb);
-                    this.kissProcessor.receive(bb);
+                    int avail = this.inputStream.available();
+                    if (avail > 0)
+                    {
+                        byte[] bb = new byte[1024];
+                        this.inputStream.read(bb);
+                        this.kissProcessor.receive(bb);
+                    }
+                } catch (Exception e) {
+                    //e.printStackTrace(System.err);
+                    fireDisconnect();
                 }
-            } catch (Exception e) {
-                //e.printStackTrace(System.err);
-                fireDisconnect();
             }
             try
             {
@@ -135,6 +167,11 @@ public class KISSClient implements Runnable
             fireDisconnect();
             throw e;
         }
+    }
+
+    public boolean isConnected()
+    {
+        return this.connected;
     }
 
     private void fireDisconnect()
@@ -167,6 +204,7 @@ public class KISSClient implements Runnable
     public void send(AX25Packet packet) throws IOException
     {
         this.send(packet.bytesWithoutCRC());
+        this.listeners.forEach((l) -> l.onTransmit(packet));
     }
 
     public void send(String from, String to, String data) throws IOException

@@ -7,4 +7,5 @@ public interface AX25PacketListener
     public void onKISSConnect(InetSocketAddress socketAddress);
     public void onKISSDisconnect(InetSocketAddress socketAddress);
     public void onReceived(AX25Packet packet);
+    public void onTransmit(AX25Packet packet);
 }

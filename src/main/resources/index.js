@@ -98,7 +98,7 @@ function setupWebsocket()
                     logIt("KISS Server Disconnected");
                 }
             } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("payload")) {
-                logIt("Fm " + padString(jsonObject.source,8) + " To " + padString(jsonObject.destination,8) + " > " + jsonObject.payload);
+                logIt("[ " + padString(jsonObject.source,9) + " > " + padString(jsonObject.destination,9) + " ] " + jsonObject.payload);
             }
         };
         

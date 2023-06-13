@@ -35,6 +35,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     public JavaKISSMain(KISSClient client)
     {
         this.kClient = client;
+        this.kClient.setKissPing(true);
         String pattern = "HH:mm:ss yyyy-MM-dd";
         this.simpleDateFormat = new SimpleDateFormat(pattern);
         client.addAX25PacketListener(this);
@@ -65,13 +66,6 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 }
                 AX25Packet packet = new AX25Packet(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
                 kClient.send(packet);
-
-                jsonLogAppend("tx.json", packet.toJSONObject());
-
-                if (JavaKISSMain.settings.optBoolean("verbose", false))
-                {
-                    System.err.println("[" + this.simpleDateFormat.format(packet.getTimestamp()) + "] (Tx) " + packet.toLogString());
-                }
                 seq++;
             } catch (Exception e) {
                 log(e);
@@ -198,14 +192,15 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             });
             kClient.connect();
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            //e.printStackTrace(System.err);
+            System.err.println(e.getLocalizedMessage());
         }
     }
 
     public static void showHelp(Options options)
     {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( "jaxt", "Java AX25 Tool: A Java KISS TNC Client implementation", options, "" );
+        formatter.printHelp( "jaxt", "Java AX25 Tool: A Java KISS TNC Client implementation", options, "Project Homepage - https://openstatic.org/projects/jaxt/" );
         System.exit(0);
     }
 
@@ -214,7 +209,6 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     {
         JSONObject logEntry = packet.toJSONObject();
         jsonLogAppend("rx.json", logEntry);
-        jsonLogAppend(packet.getSourceCallsign() + ".json", logEntry);
         if (settings.optBoolean("verbose", false))
         {
             System.err.println("[" + this.simpleDateFormat.format(packet.getTimestamp()) + "] (Rx) " + packet.toLogString());
@@ -222,6 +216,17 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         if (settings.has("postUrl"))
         {
             JavaKISSMain.postAX25Packet(settings.optString("postUrl"), packet);
+        }
+    }
+
+    @Override
+    public void onTransmit(AX25Packet packet)
+    {
+        JSONObject logEntry = packet.toJSONObject();
+        jsonLogAppend("tx.json", logEntry);
+        if (settings.optBoolean("verbose", false))
+        {
+            System.err.println("[" + this.simpleDateFormat.format(packet.getTimestamp()) + "] (Tx) " + packet.toLogString());
         }
     }
 

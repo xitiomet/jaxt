@@ -4,7 +4,7 @@ A Java AX.25 Command line tool and library
 
 To compile this project please run:
 ```bash
-$ mvn cliean package
+$ mvn clean package
 ```
 from a terminal.
 
@@ -13,20 +13,22 @@ This program has been tested with [UZ7HO's Soundmodem](https://uz7.ho.ua/packetr
 ```bash
 usage: jaxt
 Java AX25 Tool: A Java KISS TNC Client implementation
- -?,--help                 Shows help
- -d,--destination <arg>    Destination callsign
- -f,--config-file <arg>    Specify config file (.json)
- -h,--host <arg>           Specify TNC host (Default: 127.0.0.1)
- -l,--logging <arg>        Enable Logging, and optionally specify a
-                           directory
- -m,--test-payload <arg>   Test payload to send on test interval. {{ts}}
-                           for timestamp, {{seq}} for sequence.
- -p,--port <arg>           KISS Port (Default: 8100)
- -s,--source <arg>         Source callsign
- -t,--test <arg>           Send test packets (optional parameter interval
-                           in seconds)
- -v,--verbose              Shows Packets
- -x,--post <arg>           HTTP POST packets received as JSON to url
+ -?,--help                Shows help
+ -a,--api <arg>           Enable API Web Server, and specify port
+                          (Default: 8101)
+ -d,--destination <arg>   Destination callsign (test payload)
+ -f,--config-file <arg>   Specify config file (.json)
+ -h,--host <arg>          Specify TNC host (Default: 127.0.0.1)
+ -l,--logs <arg>          Enable Logging, and optionally specify a
+                          directory
+ -m,--payload <arg>       Payload string to send on test interval. {{ts}}
+                          for timestamp, {{seq}} for sequence.
+ -p,--port <arg>          KISS Port (Default: 8100)
+ -s,--source <arg>        Source callsign (test payload)
+ -t,--test <arg>          Send test packets (optional parameter interval
+                          in seconds, default is 10 seconds)
+ -v,--verbose             Shows Packets
+ -x,--post <arg>          HTTP POST packets received as JSON to url
  ```
 
  If you wish to avoid a lot of command line arguments, the config file format looks like this save as .json:
@@ -36,8 +38,8 @@ Java AX25 Tool: A Java KISS TNC Client implementation
     "host": "127.0.0.1",
     "port": 8100,
     "verbose": true,
-    "source": "NOCALL",
-    "destination": "NOCALL",
+    "source": "NOCALL-1",
+    "destination": "NOCALL-2",
     "payload": "I am sending message #{{seq}} at {{ts}}",
     "txTest": false,
     "txTestInterval": 10000,
@@ -48,14 +50,16 @@ Java AX25 Tool: A Java KISS TNC Client implementation
 }
  ```
 
+
  ### Logging
 
-In the "logPath" (which defaults to the current directory) you will find "main.log", "exceptions.log", "rx.json" and "tx.json" As well as a .json file for every callsign you receive packets from.
+In the "logPath" (which defaults to the current directory) you will find "main.log", "exceptions.log", "rx.json" and "tx.json"
 
 * "main.log" - this log contains connection information, and status information.
 * "exceptions.log" - this log contains advanced debugging info for jaxt.
 * "rx.json" - A Log of all packets received using jaxt, each line represents one json object. Check out [JSON-Roller](https://openstatic.org/projects/json-roller/) for help parsing and filtering this information.
 * "tx.json" - A Log of all packets transmitted using jaxt, each line represents one json object. Check out [JSON-Roller](https://openstatic.org/projects/json-roller/) for help parsing and filtering this information.
+
 
 ### Posting packets
 
@@ -67,8 +71,8 @@ Content-Type: application/json
 
 ```json
 {
-    "source": "NOCALL1",
-    "destination": "NOCALL2",
+    "source": "NOCALL-1",
+    "destination": "NOCALL-2",
     "timestamp": 1686600213326,
     "payload": "This is a transmission",
     "path": ["WIDE1-1"]
