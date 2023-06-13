@@ -126,8 +126,17 @@ public class AX25Packet
 		this.timestamp = new Date(System.currentTimeMillis());
 		this.payload = payload;
 		this.path = path;
-		this.source = source;
-		this.destination = destination;
+		
+		if (source != null)
+			this.source = source.toUpperCase();
+		else
+			this.source = "NOCALL";
+		
+		if (destination != null)
+			this.destination = destination.toUpperCase();
+		else
+			this.destination = "NOCALL";
+
 		int n = 7 + 7 + 7*path.length + 2 + payload.length;
 		byte[] bytes = new byte[n];
 		

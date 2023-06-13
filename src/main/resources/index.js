@@ -27,6 +27,11 @@ function padString(str, len) {
   }
 }
 
+function doTxWindow()
+{
+    var myWindow = window.open('tx.html?apiPassword=' + encodeURIComponent(document.getElementById('password').value), "Transmit", "width=455,height=335");
+}
+
 function sendEvent(wsEvent)
 {
     var out_event = JSON.stringify(wsEvent);
@@ -90,6 +95,7 @@ function setupWebsocket()
                 if (action == 'authOk') {
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('console').style.display = 'block';
+                    document.getElementById('txButton').style.display = 'inline-block';
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'kissConnected') {

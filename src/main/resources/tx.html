@@ -1,0 +1,66 @@
+<html>
+<head>
+    <script src="jquery.min.js"></script>
+    <script type="text/javascript">
+        function getParameterByName(name, url = window.location.href) 
+        {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        function transmit()
+        {
+            var txButton = document.getElementById('txButton');
+            txButton.disabled = true;
+            var source = document.getElementById('source').value;
+            var destination = document.getElementById('destination').value;
+            var payload = document.getElementById('payload').value;
+            var txCode = {
+                "source": source,
+                "destination": destination,
+                "payload": payload,
+                "apiPassword": getParameterByName('apiPassword')
+            };
+            postJSON("jaxt/api/transmit/", txCode, () => { txButton.disabled = false; }, (error) => { alert("Error Transmitting"); txButton.disabled = false; });
+        }
+
+        function postJSON(url, data, onSuccess, onError) {
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: JSON.stringify(data),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: onSuccess,
+                error: onError
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <h2>Transmit Frame</h2>
+    <table>
+        <tr>
+            <td>Source</td>
+            <td><input type="text" id="source" placeholder="NOCALL" /></td>
+        </tr>
+        <tr>
+            <td>Destination</td>
+            <td><input type="text" id="destination" placeholder="NOCALL" /></td>
+        </tr>
+        <tr>
+            <td>Payload</td>
+            <td><textarea id="payload" rows="10" cols="40" /></textarea></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td><button id="txButton" onclick="transmit()">Transmit</button></td>
+        </tr>
+    </table>
+</body>
+</html>
