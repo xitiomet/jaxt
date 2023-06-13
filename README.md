@@ -42,7 +42,9 @@ Java AX25 Tool: A Java KISS TNC Client implementation
     "txTest": false,
     "txTestInterval": 10000,
     "postUrl": "https://mywebsite.com/payloadhandler",
-    "logPath": "./jaxt-logs/"
+    "logPath": "./jaxt-logs/",
+    "apiPort": 8101,
+    "apiPassword": "locked-down-password1234"
 }
  ```
 

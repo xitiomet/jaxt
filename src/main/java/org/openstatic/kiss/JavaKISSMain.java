@@ -30,6 +30,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     public static File logsFolder;
     public static JSONObject settings;
     public static File settingsFile;
+    public static APIWebServer apiWebServer;
 
     public JavaKISSMain(KISSClient client)
     {
@@ -40,6 +41,11 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         this.mainThread = new Thread(this);
         if (JavaKISSMain.settings.optBoolean("txTest", false))
             this.mainThread.start();
+        if (JavaKISSMain.settings.has("apiPort"))
+        {
+            JavaKISSMain.apiWebServer = new APIWebServer(client);
+            JavaKISSMain.apiWebServer.setState(true);
+        }
     }
 
     public void run()
@@ -75,6 +81,8 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
     public static void main(String[] args)
     {
+        System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
+        System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
         CommandLine cmd = null;
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();
@@ -83,6 +91,9 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         options.addOption(testOption);
         options.addOption(new Option("h", "host", true, "Specify TNC host (Default: 127.0.0.1)"));
         options.addOption(new Option("p", "port", true, "KISS Port (Default: 8100)"));
+        Option apiOption = new Option("a", "api", true, "Enable API Web Server, and specify port (Default: 8101)");
+        apiOption.setOptionalArg(true);
+        options.addOption(apiOption);
         options.addOption(new Option("f", "config-file", true, "Specify config file (.json)"));
         Option loggingOption = new Option("l", "logs", true, "Enable Logging, and optionally specify a directory");
         loggingOption.setOptionalArg(true);
@@ -121,6 +132,11 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             {
                 settings.put("txTest", true);
                 settings.put("txTestInterval", Long.valueOf(cmd.getOptionValue("t", "10")).longValue() * 1000l);
+            }
+
+            if (cmd.hasOption("a"))
+            {
+                settings.put("apiPort", Integer.valueOf(cmd.getOptionValue("a", "8101")).intValue());
             }
 
             if (cmd.hasOption("m"))

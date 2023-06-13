@@ -106,6 +106,11 @@ public class AX25Packet
         parse();
 	}
 
+	public AX25Packet(JSONObject packet)
+    {
+        this(packet.optString("destination"), packet.optString("source"), new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, packet.optString("payload").getBytes(Charset.forName("US-ASCII")));
+    }
+
     public AX25Packet(String source, String destination, String payload)
     {
         this(destination, source, new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, payload.getBytes(Charset.forName("US-ASCII")));
