@@ -74,3 +74,19 @@ Content-Type: application/json
     "path": ["WIDE1-1"]
 }
 ```
+
+### Websocket and HTTP API
+
+if you use the -a option you can communicate with jaxt using websockets or http
+
+Assuming the api port is set to 8101, You can connect to the server's websocket using:
+
+ws://127.0.0.1:8101/jaxt/
+
+once connected you must transmit an object containing {"apiPassword":"xxxxxxx"} before you will receive any packets or be able to transmit.
+
+The format of AX.25 packets is the same as the POST packet format documented above. JSON objects should be sent as a single line.
+
+You can also view packets using the simple HTTP interface at:
+
+http://127.0.0.1:8101/

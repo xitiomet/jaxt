@@ -8,6 +8,15 @@
       "pattern":"\\QMETA-INF/services/org.eclipse.jetty.websocket.api.extensions.Extension\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/icon-32.png\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/index.html\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/index.js\\E"
+    }, 
+    {
       "pattern":"\\Qorg/eclipse/jetty/http/encoding.properties\\E"
     }, 
     {

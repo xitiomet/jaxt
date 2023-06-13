@@ -167,6 +167,14 @@
                     --allow-incomplete-classpath
                     --report-unsupported-elements-at-runtime
                     -H:+ReportExceptionStackTraces
+                     --initialize-at-run-time=io.netty.handler.ssl.ReferenceCountedOpenSslContext
+                     --initialize-at-run-time=io.netty.handler.ssl.JdkNpnApplicationProtocolNegotiator
+                     --initialize-at-run-time=io.netty.handler.ssl.ConscryptAlpnSslEngine
+                     --initialize-at-run-time=io.netty.handler.ssl.ReferenceCountedOpenSslEngine
+                     --initialize-at-run-time=io.netty.handler.ssl.JettyAlpnSslEngine$ClientEngine
+                     --initialize-at-run-time=io.netty.handler.ssl.JettyAlpnSslEngine$ServerEngine
+                     --initialize-at-run-time=io.netty.handler.ssl.JettyNpnSslEngine
+                     --initialize-at-run-time=io.netty.util.internal.logging.Log4JLogger
                 </buildArgs>
             </configuration>
        </plugin>

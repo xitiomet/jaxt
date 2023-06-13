@@ -42,6 +42,10 @@
   "methods":[{"name":"configuration","parameterTypes":[] }]
 },
 {
+  "name":"java.lang.Object",
+  "queryAllDeclaredMethods":true
+},
+{
   "name":"java.lang.Short",
   "methods":[{"name":"valueOf","parameterTypes":["java.lang.String"] }]
 },
@@ -78,6 +82,10 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
+  "name":"org.eclipse.jetty.websocket.common.extensions.compress.PerMessageDeflateExtension",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
   "name":"org.eclipse.jetty.websocket.server.WebSocketServerFactory",
   "methods":[{"name":"<init>","parameterTypes":["javax.servlet.ServletContext","org.eclipse.jetty.websocket.api.WebSocketPolicy"] }]
 },
@@ -86,11 +94,25 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
+  "name":"org.openstatic.kiss.APIWebServer$EventsWebSocket",
+  "queryAllDeclaredMethods":true,
+  "methods":[
+    {"name":"<init>","parameterTypes":[] }, 
+    {"name":"onClose","parameterTypes":["org.eclipse.jetty.websocket.api.Session","int","java.lang.String"] }, 
+    {"name":"onConnect","parameterTypes":["org.eclipse.jetty.websocket.api.Session"] }, 
+    {"name":"onText","parameterTypes":["org.eclipse.jetty.websocket.api.Session","java.lang.String"] }
+  ]
+},
+{
   "name":"org.openstatic.kiss.APIWebServer$EventsWebSocketServlet",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
   "name":"org.openstatic.kiss.InterfaceServlet",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"sun.security.provider.SHA",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 }
 ]

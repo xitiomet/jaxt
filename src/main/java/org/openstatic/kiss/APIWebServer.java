@@ -40,6 +40,7 @@ public class APIWebServer implements AX25PacketListener
     public APIWebServer(KISSClient client)
     {
         this.kClient = client;
+        this.kClient.addAX25PacketListener(this);
         APIWebServer.instance = this;
         this.wsSessions = new ArrayList<WebSocketSession>();
         this.sessionProps = new HashMap<WebSocketSession, JSONObject>();
@@ -61,6 +62,19 @@ public class APIWebServer implements AX25PacketListener
         JSONObject sessionProperties = this.sessionProps.get(session);
         if (JavaKISSMain.settings.optString("apiPassword","").equals(j.optString("apiPassword","")))
         {
+            sessionProperties.put("auth", true);
+            JSONObject authJsonObject = new JSONObject();
+            authJsonObject.put("action", "authOk");
+            session.getRemote().sendStringByFuture(authJsonObject.toString());
+        } else {
+            JSONObject errorJsonObject = new JSONObject();
+            errorJsonObject.put("action", "authFail");
+            errorJsonObject.put("error", "Invalid apiPassword!");
+            session.getRemote().sendStringByFuture(errorJsonObject.toString());
+        }
+        
+        if (sessionProperties.optBoolean("auth", false))
+        {
             if (j.has("source") && j.has("destination") && j.has("payload"))
             {
                 AX25Packet packet = new AX25Packet(j);
@@ -73,7 +87,7 @@ public class APIWebServer implements AX25PacketListener
             }
         } else {
             JSONObject errorJsonObject = new JSONObject();
-            errorJsonObject.put("error", "Invalid apiPassword!");
+            errorJsonObject.put("error", "Not Authorized to transmit!");
             session.getRemote().sendStringByFuture(errorJsonObject.toString());
         }
         this.sessionProps.put(session, sessionProperties);
@@ -206,7 +220,12 @@ public class APIWebServer implements AX25PacketListener
                     if (JavaKISSMain.settings.optString("apiPassword","").equals(requestPost.optString("apiPassword","")))
                     {       
                         try {
-                            
+                            if (target.equals("/transmit/"))
+                            {
+                                AX25Packet packet = new AX25Packet(requestPost);
+                                APIWebServer.instance.kClient.send(packet);
+                                response.put("transmitted", packet.toJSONObject());
+                            }
                         } catch (Exception x) {
                             x.printStackTrace(System.err);
                         }
@@ -226,7 +245,7 @@ public class APIWebServer implements AX25PacketListener
             //System.err.println("Path: " + target);
             Set<String> parameterNames = request.getParameterMap().keySet();
             JSONObject response = new JSONObject();
-            if (JavaKISSMain.settings.optString("apiPassword",null).equals(request.getParameter("apiPassword")))
+            if (JavaKISSMain.settings.optString("apiPassword","").equals(request.getParameter("apiPassword")))
             {
                 try 
                 {
@@ -250,13 +269,17 @@ public class APIWebServer implements AX25PacketListener
     @Override
     public void onKISSConnect(InetSocketAddress socketAddress) 
     {
-        
+        JSONObject kissStateJsonObject = new JSONObject();
+        kissStateJsonObject.put("action", "kissConnect");
+        broadcastJSONObject(kissStateJsonObject);
     }
 
     @Override
     public void onKISSDisconnect(InetSocketAddress socketAddress) 
     {
-        
+        JSONObject kissStateJsonObject = new JSONObject();
+        kissStateJsonObject.put("action", "kissDisconnect");
+        broadcastJSONObject(kissStateJsonObject);
     }
 
     @Override
