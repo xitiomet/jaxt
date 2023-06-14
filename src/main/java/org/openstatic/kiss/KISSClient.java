@@ -77,6 +77,7 @@ public class KISSClient implements Runnable
             } catch (Exception e1) {}
             try
             {
+                this.kissProcessor = new KissProcessor(this, (byte) 8);
                 this.socket = SocketFactory.getDefault().createSocket();
                 this.socket.connect(this.address);
                 this.socket.setSoTimeout(4000);
