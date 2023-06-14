@@ -96,6 +96,15 @@ function setupWebsocket()
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('console').style.display = 'block';
                     document.getElementById('txButton').style.display = 'inline-block';
+                    if (jsonObject.kissConnected)
+                    {
+                        logIt("KISS Server Connected");
+                    } else {
+                        logIt("KISS Server Disconnected");
+                    }
+                    sendEvent({
+                        "history": 100
+                    });
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'kissConnected') {
@@ -104,7 +113,7 @@ function setupWebsocket()
                     logIt("KISS Server Disconnected");
                 }
             } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("payload")) {
-                logIt("[ " + padString(jsonObject.source,9) + " > " + padString(jsonObject.destination,9) + " ] " + jsonObject.payload);
+                logPacket(jsonObject);
             }
         };
         
@@ -125,8 +134,19 @@ function logIt(message)
     var msgSplit = message.split(/\r?\n/);
     for (var i = 0; i < msgSplit.length; i++)
     {
-        console.innerHTML +=  "(" + dString + ") " + msgSplit[i] + "\n";
+        console.innerHTML +=  "(INFO " + dString + ") " + msgSplit[i] + "\n";
     }
+    window.scrollTo(0,document.body.scrollHeight);
+}
+
+function logPacket(packet)
+{
+    var console = document.getElementById('console');
+    var d = new Date();
+    if (packet.hasOwnProperty('timestamp'))
+        d = new Date(packet.timestamp);
+    var dString = d.toLocaleTimeString();
+    console.innerHTML +=  "(" + packet.direction.toUpperCase() + " @ " + dString + ") [ " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " ] " + packet.payload + "\n";
     window.scrollTo(0,document.body.scrollHeight);
 }
 

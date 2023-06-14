@@ -35,11 +35,13 @@ public class APIWebServer implements AX25PacketListener, Runnable
     protected HashMap<WebSocketSession, JSONObject> sessionProps;
     private KISSClient kClient;
     private Thread pingPongThread;
+    private ArrayList<JSONObject> packetHistory;
 
     protected static APIWebServer instance;
 
     public APIWebServer(KISSClient client)
     {
+        this.packetHistory = new ArrayList<JSONObject>();
         this.kClient = client;
         this.kClient.addAX25PacketListener(this);
         APIWebServer.instance = this;
@@ -65,30 +67,32 @@ public class APIWebServer implements AX25PacketListener, Runnable
         this.pingPongThread.start();
     }
 
+    public void addHistory(JSONObject obj)
+    {
+        this.packetHistory.add(obj);
+        if (this.packetHistory.size() > 1000)
+            this.packetHistory.remove(0);
+    }
+
     public void handleWebSocketEvent(JSONObject j, WebSocketSession session) 
     {
         JSONObject sessionProperties = this.sessionProps.get(session);
-        if (JavaKISSMain.settings.optString("apiPassword","").equals(j.optString("apiPassword","")))
+        if (!sessionProperties.optBoolean("auth", false))
         {
-            sessionProperties.put("auth", true);
-            JSONObject authJsonObject = new JSONObject();
-            authJsonObject.put("action", "authOk");
-            session.getRemote().sendStringByFuture(authJsonObject.toString());
-            if (APIWebServer.instance.kClient.isConnected())
+            if (JavaKISSMain.settings.optString("apiPassword","").equals(j.optString("apiPassword","")))
             {
-                JSONObject kissStateJsonObject = new JSONObject();
-                kissStateJsonObject.put("action", "kissConnected");
-                session.getRemote().sendStringByFuture(kissStateJsonObject.toString());
+                sessionProperties.put("auth", true);
+                JSONObject authJsonObject = new JSONObject();
+                authJsonObject.put("action", "authOk");
+                authJsonObject.put("kissConnected", APIWebServer.instance.kClient.isConnected());
+                authJsonObject.put("availableHistory", this.packetHistory.size());
+                session.getRemote().sendStringByFuture(authJsonObject.toString());
             } else {
-                JSONObject kissStateJsonObject = new JSONObject();
-                kissStateJsonObject.put("action", "kissDisconnected");
-                session.getRemote().sendStringByFuture(kissStateJsonObject.toString());
+                JSONObject errorJsonObject = new JSONObject();
+                errorJsonObject.put("action", "authFail");
+                errorJsonObject.put("error", "Invalid apiPassword!");
+                session.getRemote().sendStringByFuture(errorJsonObject.toString());
             }
-        } else {
-            JSONObject errorJsonObject = new JSONObject();
-            errorJsonObject.put("action", "authFail");
-            errorJsonObject.put("error", "Invalid apiPassword!");
-            session.getRemote().sendStringByFuture(errorJsonObject.toString());
         }
         
         if (sessionProperties.optBoolean("auth", false))
@@ -102,10 +106,19 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 } catch (Exception e) {
 
                 }
+            } else if (j.has("history")) {
+                int historyRequest = j.optInt("history", 100);
+                if (historyRequest > this.packetHistory.size())
+                    historyRequest = this.packetHistory.size();
+                for(int i = this.packetHistory.size() - historyRequest; i < this.packetHistory.size(); i++)
+                {
+                    String histPacket = this.packetHistory.get(i).toString();
+                    session.getRemote().sendStringByFuture(histPacket);
+                }
             }
         } else {
             JSONObject errorJsonObject = new JSONObject();
-            errorJsonObject.put("error", "Not Authorized to transmit!");
+            errorJsonObject.put("error", "Not Authorized!");
             session.getRemote().sendStringByFuture(errorJsonObject.toString());
         }
         this.sessionProps.put(session, sessionProperties);
@@ -305,6 +318,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
         JSONObject jPacket = packet.toJSONObject();
         jPacket.put("direction", "rx");
         broadcastJSONObject(jPacket);
+        addHistory(jPacket);
     }
 
     @Override
@@ -313,6 +327,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
         JSONObject jPacket = packet.toJSONObject();
         jPacket.put("direction", "tx");
         broadcastJSONObject(jPacket);
+        addHistory(jPacket);
     }
 
     @Override

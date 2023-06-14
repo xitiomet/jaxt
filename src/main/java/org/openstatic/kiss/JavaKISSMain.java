@@ -25,7 +25,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 {
     private KISSClient kClient;
     private Thread mainThread;
-    private SimpleDateFormat simpleDateFormat;;
+    private SimpleDateFormat simpleDateFormat;
 
     public static File logsFolder;
     public static JSONObject settings;
