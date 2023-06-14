@@ -14,6 +14,7 @@
     <imageName>jaxt</imageName>
     <graalvm.version>22.3.0</graalvm.version>
     <jettyVersion>9.4.40.v20210413</jettyVersion>
+    <skipNative>false</skipNative>
   </properties>
   <dependencies>
     <dependency>
@@ -155,7 +156,7 @@
                 </execution>
             </executions>
             <configuration>
-                <skip>false</skip>
+                <skip>${skipNative}</skip>
                 <imageName>${imageName}</imageName>
                 <mainClass>${mainClass}</mainClass>
                 <buildArgs>
@@ -193,6 +194,7 @@
                     <configuration>
                         <verbose>true</verbose>
                         <snapshotExpand>true</snapshotExpand>
+                        <skip>${skipNative}</skip>
                         <!-- expand "SNAPSHOT" to what is in the "USER" env variable -->
                         <snapshotEnv>USER</snapshotEnv>
                         <controlDir>${project.basedir}/src/deb/control-native</controlDir>

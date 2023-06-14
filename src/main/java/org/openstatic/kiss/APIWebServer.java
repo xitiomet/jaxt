@@ -257,22 +257,32 @@ public class APIWebServer implements AX25PacketListener
             JSONObject response = new JSONObject();
             if (JavaKISSMain.settings.optString("apiPassword","").equals(request.getParameter("apiPassword")))
             {
-                if (APIWebServer.instance.kClient.isConnected())
+                
+                if (target.equals("/transmit/"))
                 {
-                    try 
+                    if (APIWebServer.instance.kClient.isConnected())
                     {
-                        if (target.equals("/transmit/"))
+                        try 
                         {
                             AX25Packet packet = new AX25Packet(request.getParameter("source"), request.getParameter("destination"), request.getParameter("payload"));
                             APIWebServer.instance.kClient.send(packet);
                             response.put("transmitted", packet.toJSONObject());
+                        } catch (Exception x) {
+                            //x.printStackTrace(System.err);
+                            response.put("error", x.getLocalizedMessage());
                         }
-                    } catch (Exception x) {
-                        //x.printStackTrace(System.err);
-                        response.put("error", x.getLocalizedMessage());
+                    } else {
+                        response.put("error", "Not connected to KISS server!");
                     }
-                } else {
-                    response.put("error", "Not connected to KISS server!");
+                } else if (target.equals("/settings/")) {
+                    Set<String> keySet = JavaKISSMain.settings.keySet();
+                    for(String key : keySet)
+                    {
+                        if (!"apiPassword".equals(key))
+                        {
+                            response.put(key, JavaKISSMain.settings.opt(key));
+                        }
+                    }
                 }
             } else {
                 response.put("error", "Invalid apiPassword!");

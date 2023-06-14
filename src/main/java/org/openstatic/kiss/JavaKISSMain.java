@@ -75,8 +75,11 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
     public static void main(String[] args)
     {
-        System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
+        org.eclipse.jetty.util.log.Log.setLog(new NoLogging());
+        //System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
+        //org.eclipse.jetty.util.log.Log.getProperties().setProperty("org.eclipse.jetty.util.log.announce", "false");
+
         CommandLine cmd = null;
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();
@@ -155,12 +158,12 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
             if (cmd.hasOption("s"))
             {
-                settings.put("source", cmd.getOptionValue("s"));
+                settings.put("source", cmd.getOptionValue("s").toUpperCase());
             }
             
             if (cmd.hasOption("d"))
             {
-                settings.put("destination", cmd.getOptionValue("d"));
+                settings.put("destination", cmd.getOptionValue("d").toUpperCase());
             }
 
             if (cmd.hasOption("l"))

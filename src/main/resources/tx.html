@@ -2,6 +2,8 @@
 <head>
     <script src="jquery.min.js"></script>
     <script type="text/javascript">
+        var apiPassword = "";
+
         function getParameterByName(name, url = window.location.href) 
         {
             name = name.replace(/[\[\]]/g, '\\$&');
@@ -23,7 +25,7 @@
                 "source": source,
                 "destination": destination,
                 "payload": payload,
-                "apiPassword": getParameterByName('apiPassword')
+                "apiPassword": apiPassword
             };
             postJSON("jaxt/api/transmit/", txCode, () => { txButton.disabled = false; }, (error) => { alert("Error Transmitting"); txButton.disabled = false; });
         }
@@ -39,10 +41,34 @@
                 error: onError
             });
         }
+
+        function getSettings()
+        {
+            apiPassword = getParameterByName('apiPassword');
+            $.ajax({
+                url: "jaxt/api/settings/?apiPassword=" + apiPassword,
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    
+                    if (data.hasOwnProperty('source'))
+                    {
+                        document.getElementById('source').value = data.source;
+                    }
+
+                    if (data.hasOwnProperty('destination'))
+                    {
+                        document.getElementById('destination').value = data.destination;
+                    }
+                    
+                },
+                error: () => {}
+            });
+        }
     </script>
 </head>
 
-<body>
+<body onload="getSettings()">
     <h2>Transmit Frame</h2>
     <table>
         <tr>
