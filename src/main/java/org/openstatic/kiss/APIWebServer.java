@@ -28,12 +28,13 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
-public class APIWebServer implements AX25PacketListener
+public class APIWebServer implements AX25PacketListener, Runnable
 {
     private Server httpServer;
     protected ArrayList<WebSocketSession> wsSessions;
     protected HashMap<WebSocketSession, JSONObject> sessionProps;
     private KISSClient kClient;
+    private Thread pingPongThread;
 
     protected static APIWebServer instance;
 
@@ -55,6 +56,13 @@ public class APIWebServer implements AX25PacketListener
             e.printStackTrace(System.err);
         }
         httpServer.setHandler(context);
+        try {
+            httpServer.start();
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+        }
+        this.pingPongThread = new Thread(this);
+        this.pingPongThread.start();
     }
 
     public void handleWebSocketEvent(JSONObject j, WebSocketSession session) 
@@ -101,23 +109,6 @@ public class APIWebServer implements AX25PacketListener
             session.getRemote().sendStringByFuture(errorJsonObject.toString());
         }
         this.sessionProps.put(session, sessionProperties);
-    }
-
-    public void setState(boolean b) {
-        if (b) 
-        {
-            try {
-                httpServer.start();
-            } catch (Exception e) {
-                e.printStackTrace(System.err);
-            }
-        } else {
-            try {
-                httpServer.stop();
-            } catch (Exception e) {
-                e.printStackTrace(System.err);
-            }
-        }
     }
 
     public void broadcastJSONObject(JSONObject jo) 
@@ -322,6 +313,24 @@ public class APIWebServer implements AX25PacketListener
         JSONObject jPacket = packet.toJSONObject();
         jPacket.put("direction", "tx");
         broadcastJSONObject(jPacket);
+    }
+
+    @Override
+    public void run()
+    {
+        while(this.httpServer.isRunning())
+        {
+            try
+            {
+                JSONObject pingJSON = new JSONObject();
+                pingJSON.put("action", "ping");
+                pingJSON.put("timestamp", System.currentTimeMillis());
+                broadcastJSONObject(pingJSON);
+                Thread.sleep(60000);
+            } catch (Exception e) {
+
+            }
+        }
     }
 
 }

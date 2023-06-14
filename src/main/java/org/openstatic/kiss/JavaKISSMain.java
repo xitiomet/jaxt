@@ -45,7 +45,6 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         if (JavaKISSMain.settings.has("apiPort"))
         {
             JavaKISSMain.apiWebServer = new APIWebServer(client);
-            JavaKISSMain.apiWebServer.setState(true);
         }
     }
 
