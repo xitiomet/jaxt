@@ -75,6 +75,9 @@ Content-Type: application/json
     "destination": "NOCALL-2",
     "timestamp": 1686600213326,
     "payload": "This is a transmission",
+    "control": 3,
+    "protocol": 240,
+    "direction": "rx",
     "path": ["WIDE1-1"]
 }
 ```
