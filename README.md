@@ -8,7 +8,9 @@ $ mvn clean package
 ```
 from a terminal.
 
-This program has been tested with [UZ7HO's Soundmodem](https://uz7.ho.ua/packetradio.htm) and [QtSoundmodem](https://www.cantab.net/users/john.wiseman/Documents/QtSoundModem.html) connect to the KISS port and IP of your TNC.
+This program has been tested with [UZ7HO's Soundmodem](https://uz7.ho.ua/packetradio.htm), [QtSoundmodem](https://www.cantab.net/users/john.wiseman/Documents/QtSoundModem.html) and [DireWolf](https://github.com/wb2osz/direwolf)
+
+NOTE: Connect to the KISS port and IP of your TNC. Does not work with AGWPE
 
 ```bash
 usage: jaxt

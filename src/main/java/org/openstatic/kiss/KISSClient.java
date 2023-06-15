@@ -107,8 +107,8 @@ public class KISSClient implements Runnable
         try
         {
             //System.err.println("KissPING");
-            this.kissProcessor.startKissPacket(kissProcessor.KISS_CMD_NOCMD);
-            this.kissProcessor.completeKissPacket();
+            this.outputStream.write((byte)0xc0);
+            this.outputStream.flush();
         } catch (Exception e) {
             //System.err.println("KissPING Error");
             fireDisconnect();
@@ -147,7 +147,7 @@ public class KISSClient implements Runnable
                         this.kissProcessor.receive(bb);
                     }
                 } catch (Exception e) {
-                    e.printStackTrace(System.err);
+                    //e.printStackTrace(System.err);
                     fireDisconnect();
                 }
             }
@@ -164,6 +164,7 @@ public class KISSClient implements Runnable
         try
         {
             this.outputStream.write(data);
+            this.lastKissPing = System.currentTimeMillis();
         } catch (IOException e) {
             fireDisconnect();
             throw e;
@@ -192,6 +193,7 @@ public class KISSClient implements Runnable
         {
             this.listeners.forEach((l) -> l.onReceived(packet));
         }
+        this.lastKissPing = System.currentTimeMillis();
     }
 
     private void send(byte[] data) throws IOException

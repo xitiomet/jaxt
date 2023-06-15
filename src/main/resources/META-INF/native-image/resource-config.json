@@ -29,7 +29,19 @@
       "pattern":"\\Qjaxt/jquery.min.js\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/led-green.svg\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/led-grey.svg\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/led-red.svg\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/tx.html\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/tx.png\\E"
     }, 
     {
       "pattern":"\\Qorg/eclipse/jetty/http/encoding.properties\\E"

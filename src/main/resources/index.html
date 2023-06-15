@@ -174,6 +174,10 @@
                 -ms-user-select: none;
                 user-select: none;
             }
+            
+            #txButton {
+              cursor: pointer;
+            }
           </style>
     </head>
     <body>
@@ -181,7 +185,10 @@
             <table width="100%"><tbody>
                 <tr><td width="32px"><img src="icon-32.png"></td>
                 <td style="color: white;" align="left"><a href="/" id="serverTitle" style="text-decoration: none; color: white; font-size: 20px;">JAXT</a></td>
-                <td style="padding-right: 9px;" align="right"><button id="txButton" style="display: none;" onclick="doTxWindow()">Transmit</button></td>
+                <td style="padding-right: 9px;" align="right">
+                  <img src="led-grey.svg" id="connectionLed" style="width: 32px; height: 32px;" title="KISS Connection Status" />
+                  <img src="tx.png" id="txButton" style="display: none; height: 32px; padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px;" onclick="doTxWindow()" title="Open transmit dialog" />
+                </td>
                 </tr>
             </tbody></table>
         </div>
