@@ -147,7 +147,7 @@ public class KISSClient implements Runnable
                         this.kissProcessor.receive(bb);
                     }
                 } catch (Exception e) {
-                    //e.printStackTrace(System.err);
+                    e.printStackTrace(System.err);
                     fireDisconnect();
                 }
             }
@@ -187,6 +187,7 @@ public class KISSClient implements Runnable
     protected void onKPReceive(byte[] frame) 
     {
         AX25Packet packet = new AX25Packet(frame);
+        packet.setDirection("rx");
         if (packet.isValid())
         {
             this.listeners.forEach((l) -> l.onReceived(packet));
@@ -204,6 +205,7 @@ public class KISSClient implements Runnable
 
     public void send(AX25Packet packet) throws IOException
     {
+        packet.setDirection("tx");
         this.send(packet.bytesWithoutCRC());
         this.listeners.forEach((l) -> l.onTransmit(packet));
     }

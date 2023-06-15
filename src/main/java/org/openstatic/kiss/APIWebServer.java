@@ -97,7 +97,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
         
         if (sessionProperties.optBoolean("auth", false))
         {
-            if (j.has("source") && j.has("destination") && j.has("payload"))
+            if (j.has("source") && j.has("destination"))
             {
                 AX25Packet packet = new AX25Packet(j);
                 try
@@ -316,7 +316,6 @@ public class APIWebServer implements AX25PacketListener, Runnable
     public void onReceived(AX25Packet packet) 
     {
         JSONObject jPacket = packet.toJSONObject();
-        jPacket.put("direction", "rx");
         broadcastJSONObject(jPacket);
         addHistory(jPacket);
     }
@@ -325,7 +324,6 @@ public class APIWebServer implements AX25PacketListener, Runnable
     public void onTransmit(AX25Packet packet)
     {
         JSONObject jPacket = packet.toJSONObject();
-        jPacket.put("direction", "tx");
         broadcastJSONObject(jPacket);
         addHistory(jPacket);
     }

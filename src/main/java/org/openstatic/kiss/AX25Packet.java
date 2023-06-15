@@ -14,6 +14,7 @@ public class AX25Packet
 	private Date timestamp;
 	private int control;
 	private int protocol;
+	private String direction;
 
     private final int AX25_CRC_CORRECT   = 0xF0B8;
 	private final int CRC_CCITT_INIT_VAL = 0xFFFF;
@@ -67,7 +68,11 @@ public class AX25Packet
 	private int crc = CRC_CCITT_INIT_VAL;
 	private byte packet[] = new byte[MAX_FRAME_SIZE];
 	private int size = 0;
-	
+
+	public void setDirection(String d)
+	{
+		this.direction = d;
+	}
 	
 	public byte[] bytesWithCRC()  
 	{ 
@@ -83,7 +88,7 @@ public class AX25Packet
 	public AX25Packet(byte[] bytes) 
 	{
 		this.timestamp = new Date(System.currentTimeMillis());
-
+		this.direction = null;
 	  	assert (crc == CRC_CCITT_INIT_VAL);
 	  	assert (bytes.length+2 <= packet.length);
 	  
@@ -92,7 +97,6 @@ public class AX25Packet
 			crc_ccitt_update(packet[size]);
 			size++;
 		}
-		//System.err.println("SIZE:" + String.valueOf(size));
 		
 	  	int crcl = (crc & 0xff) ^ 0xff;
 	  	int crch = (crc >> 8) ^ 0xff;
@@ -109,9 +113,50 @@ public class AX25Packet
         parse();
 	}
 
+	public void parse() 
+    {
+		int offset= 0;
+		this.destination = parseCall(packet,offset);
+		offset += 7;
+		this.source = parseCall(packet,offset);
+		offset += 7;
+		
+		int repeaters = 0;
+		while (offset+7 <= size && (packet[offset-1] & 0x01) == 0) {
+			repeaters++;
+			if (repeaters > 8) break; // missing LSB=1 to terminate the path
+			String path_element = parseCall(packet,offset);
+			offset += 7;
+			if (path == null) {
+				path = new String[1];
+				path[0] = path_element;
+			} else {
+				path = Arrays.copyOf(path,path.length+1);
+				path[path.length-1] = path_element;
+			}
+		}
+		
+		//offset += 2; // skip PID, control
+        this.control = ((int) packet[offset++]) & 0xffff;
+		if (this.control == AX25_CONTROL_APRS)
+		{
+			this.protocol = ((int) packet[offset++]) & 0xff;
+
+			if (size >= 18)
+			{
+				this.payload = Arrays.copyOfRange(packet, offset, (size - 2)); // chop off CRC
+			} else {
+				this.payload = new byte[0];
+			}
+		} else {
+			this.protocol = 0;
+			this.payload = new byte[0];
+		}
+	}
+
 	public AX25Packet(JSONObject packet)
     {
-        this(packet.optString("destination"), packet.optString("source"), new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, packet.optString("payload").getBytes(Charset.forName("US-ASCII")));
+        this(packet.optString("destination"), packet.optString("source"), new String[] {}, packet.optInt("control", AX25Packet.AX25_CONTROL_APRS) & 0xffff, packet.optInt("protocol", AX25Packet.AX25_PROTOCOL_NO_LAYER_3) & 0xff, packet.optString("payload", "").getBytes(Charset.forName("US-ASCII")));
     }
 
     public AX25Packet(String source, String destination, String payload)
@@ -126,6 +171,7 @@ public class AX25Packet
 			          int      protocol,
 			          byte[]   payload) 
     {
+		this.direction = null;
 		this.timestamp = new Date(System.currentTimeMillis());
 		this.payload = payload;
 		this.path = path;
@@ -141,8 +187,14 @@ public class AX25Packet
 			this.destination = destination.toUpperCase();
 		else
 			this.destination = "NOCALL";
-
-		int n = 7 + 7 + 7*path.length + 2 + payload.length;
+		int cpfSize = 1;
+		if (this.control == AX25_CONTROL_APRS)
+		{
+			cpfSize = 2;
+		} else {
+			this.protocol = 0;
+		}
+		int n = 7 + 7 + 7*path.length + cpfSize + payload.length;
 		byte[] bytes = new byte[n];
 		
 		int offset = 0;
@@ -158,10 +210,14 @@ public class AX25Packet
 		}
 		
 		bytes[offset++] = (byte) control;
-		bytes[offset++] = (byte) protocol;
-		
-		for (int j=0; j<payload.length; j++) {
-			bytes[offset++] = payload[j];
+		if (control == AX25_CONTROL_APRS)
+		{
+			bytes[offset++] = (byte) protocol;
+			
+			for (int j=0; j<payload.length; j++)
+			{
+				bytes[offset++] = payload[j];
+			}
 		}
 		
 		assert(offset == n);
@@ -248,22 +304,24 @@ public class AX25Packet
 
     public String getPayloadAsString()
     {
-		if (payload.length > 0)
+		if (payload != null)
 		{
-			int firstNull = 0;
-			for (int i = 0; i < payload.length; i++)
+			if (payload.length > 0)
 			{
-				if (payload[i] == 0x00)
+				int firstNull = 0;
+				for (int i = 0; i < payload.length; i++)
 				{
-					firstNull = i;
-					break;
+					if (payload[i] == 0x00)
+					{
+						firstNull = i;
+						break;
+					}
 				}
+				if (firstNull == 0) firstNull = payload.length;
+				return new String(Arrays.copyOf(payload, firstNull));
 			}
-			if (firstNull == 0) firstNull = payload.length;
-			return new String(Arrays.copyOf(payload, firstNull));
-		} else {
-			return "";
 		}
+		return "";
     }
 	
 	private static String parseCall(byte[] packet, int offset) 
@@ -285,41 +343,6 @@ public class AX25Packet
 	  	call += String.format("-%d", ssid);
 		
 		return new String(call);
-	}
-	
-	public void parse() 
-    {
-		int offset= 0;
-		this.destination = parseCall(packet,offset);
-		offset += 7;
-		this.source = parseCall(packet,offset);
-		offset += 7;
-		
-		int repeaters = 0;
-		while (offset+7 <= size && (packet[offset-1] & 0x01) == 0) {
-			repeaters++;
-			if (repeaters > 8) break; // missing LSB=1 to terminate the path
-			String path_element = parseCall(packet,offset);
-			offset += 7;
-			if (path == null) {
-				path = new String[1];
-				path[0] = path_element;
-			} else {
-				path = Arrays.copyOf(path,path.length+1);
-				path[path.length-1] = path_element;
-			}
-		}
-		
-		//offset += 2; // skip PID, control
-        this.control = (int) packet[offset++];
-		this.protocol = (int) packet[offset++];
-
-		if (size >= 18)
-		{
-			this.payload = Arrays.copyOfRange(packet, offset, (size - 2)); // chop off CRC
-		} else {
-			this.payload = new byte[0];
-		}
 	}
 	
     private void crc_ccitt_update(byte b) 
@@ -395,10 +418,16 @@ public class AX25Packet
 		JSONObject ro = new JSONObject();
 		ro.put("source", this.getSourceCallsign());
 		ro.put("destination", this.getDestinationCallsign());
-		if (payload.length > 0)
-			ro.put("payload", this.getPayloadAsString());
-		ro.put("control", this.control & 0xff);
-		ro.put("protocol", this.protocol & 0xff);
+		if (payload != null)
+		{
+			if (payload.length > 0)
+				ro.put("payload", this.getPayloadAsString());
+		}
+		ro.put("control", this.control & 0xffff);
+		if (this.protocol > 0)
+			ro.put("protocol", this.protocol & 0xff);
+		if (this.direction != null)
+			ro.put("direction", this.direction);
 		ro.put("size", this.size);
 		if (this.path != null)
 		{
