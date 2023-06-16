@@ -84,6 +84,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 JSONObject authJsonObject = new JSONObject();
                 authJsonObject.put("action", "authOk");
                 authJsonObject.put("kissConnected", APIWebServer.instance.kClient.isConnected());
+                authJsonObject.put("txDisabled", JavaKISSMain.settings.optBoolean("txDisabled", false));
                 authJsonObject.put("availableHistory", this.packetHistory.size());
                 session.getRemote().sendStringByFuture(authJsonObject.toString());
             } else {

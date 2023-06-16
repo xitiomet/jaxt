@@ -91,7 +91,7 @@ function setupWebsocket()
         };
         
         connection.onerror = function (error) {
-
+            //document.getElementById('connectionLed').src="led-grey.svg";
         };
 
         //Code for handling incoming Websocket messages from the server
@@ -107,7 +107,10 @@ function setupWebsocket()
                 if (action == 'authOk') {
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('console').style.display = 'block';
-                    document.getElementById('txButton').style.display = 'inline-block';
+                    if (!jsonObject.txDisabled)
+                    {
+                        document.getElementById('txButton').style.display = 'inline-block';
+                    }
                     updateKCS(jsonObject.kissConnected)
                     sendEvent({
                         "history": 100
@@ -124,12 +127,28 @@ function setupWebsocket()
             }
         };
         
-        connection.onclose = function () {
-          console.log('WebSocket connection closed');
-          reconnectTimeout = setTimeout(setupWebsocket, 10000);
+        connection.onclose = function () 
+        {
+            document.getElementById('connectionLed').src="led-grey.svg";
+            console.log('WebSocket connection closed');
+            reconnectTimeout = setTimeout(setupWebsocket, 10000);
         };
     } catch (err) {
         console.log(err);
+    }
+}
+
+function getDTString(date)
+{
+    var now = new Date();
+    var nowDateString = now.toLocaleDateString();
+    var dateString = date.toLocaleDateString();
+    var timeString = date.toLocaleTimeString();
+    if (nowDateString != dateString)
+    {
+        return dateString + ' ' + timeString;
+    } else {
+        return timeString;
     }
 }
 
@@ -137,11 +156,10 @@ function logIt(message)
 {
     var console = document.getElementById('console');
     var d = new Date();
-    var dString = d.toLocaleTimeString();
     var msgSplit = message.split(/\r?\n/);
     for (var i = 0; i < msgSplit.length; i++)
     {
-        console.innerHTML +=  "(INFO " + dString + ") " + msgSplit[i] + "\n";
+        console.innerHTML +=  "(INFO " + getDTString(d) + ") " + msgSplit[i] + "\n";
     }
     window.scrollTo(0,document.body.scrollHeight);
 }
@@ -152,8 +170,7 @@ function logPacket(packet)
     var d = new Date();
     if (packet.hasOwnProperty('timestamp'))
         d = new Date(packet.timestamp);
-    var dString = d.toLocaleTimeString();
-    console.innerHTML +=  "(" + packet.direction.toUpperCase() + " @ " + dString + ") [ " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " ] " + packet.payload + "\n";
+    console.innerHTML +=  "(" + packet.direction.toUpperCase() + " @ " + getDTString(d) + ") [ " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " ] " + packet.payload + "\n";
     window.scrollTo(0,document.body.scrollHeight);
 }
 

@@ -50,22 +50,14 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
     public void run()
     {
-        int seq = 1;
         while(true)
         {
             try
             {
                 Thread.sleep(JavaKISSMain.settings.optLong("txTestInterval", 10000));
-                String tsString = String.valueOf(System.currentTimeMillis());
-                String seqString = String.valueOf(seq);
-                String payload = "JAXT Test Transmission @" + tsString + " #" + seqString;
-                if (settings.has("payload"))
-                {
-                    payload = settings.optString("payload").replaceAll(Pattern.quote("{{ts}}"), tsString).replaceAll(Pattern.quote("{{seq}}"), tsString);
-                }
+                String payload = settings.optString("payload","JAXT Test Transmission @{{ts}} #{{seq}}");
                 AX25Packet packet = new AX25Packet(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
                 kClient.send(packet);
-                seq++;
             } catch (Exception e) {
                 log(e);
             }
@@ -183,6 +175,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 }
             }
             KISSClient kClient = new KISSClient(settings.optString("host"), settings.optInt("port",8100));
+            kClient.setTxDisabled(settings.optBoolean("txDisabled", false));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
             saveSettings();
             Runtime.getRuntime().addShutdownHook(new Thread() 

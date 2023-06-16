@@ -8,6 +8,9 @@
       "pattern":"\\QMETA-INF/services/org.eclipse.jetty.websocket.api.extensions.Extension\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/favicon.ico\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/icon-128.png\\E"
     }, 
     {

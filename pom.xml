@@ -6,7 +6,7 @@
   <version>1.0</version>
   <packaging>jar</packaging>
   <name>Java AX25 Tool</name>
-  <url>http://openstatic.org/</url>
+  <url>https://openstatic.org/projects/jaxt/</url>
   <properties>
     <mainClass>org.openstatic.kiss.JavaKISSMain</mainClass>
     <maven.compiler.source>11</maven.compiler.source>

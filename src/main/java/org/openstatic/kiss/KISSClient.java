@@ -22,6 +22,8 @@ public class KISSClient implements Runnable
     private KissProcessor kissProcessor;
     private ArrayList<AX25PacketListener> listeners;
     private long lastKissPing;
+    private boolean txDisabled;
+    private int txNumber;
 
     public KISSClient(String ipAddress, int port) throws IOException
     {
@@ -31,6 +33,13 @@ public class KISSClient implements Runnable
         this.address = new InetSocketAddress(ipAddress, port);
         this.listeners = new ArrayList<AX25PacketListener>();
         this.allowKissPing = false;
+        this.txDisabled = false;
+        this.txNumber = 1;
+    }
+
+    public void setTxDisabled(boolean txDisabled)
+    {
+        this.txDisabled = txDisabled;
     }
 
     public void setKissPing(boolean v)
@@ -161,13 +170,17 @@ public class KISSClient implements Runnable
 
     protected void onKPSend(byte[] data) throws IOException
     {
-        try
+        if (!this.txDisabled)
         {
-            this.outputStream.write(data);
-            this.lastKissPing = System.currentTimeMillis();
-        } catch (IOException e) {
-            fireDisconnect();
-            throw e;
+            try
+            {
+                this.outputStream.write(data);
+                this.lastKissPing = System.currentTimeMillis();
+                this.txNumber++;
+            } catch (IOException e) {
+                fireDisconnect();
+                throw e;
+            }
         }
     }
 
@@ -187,29 +200,39 @@ public class KISSClient implements Runnable
 
     protected void onKPReceive(byte[] frame) 
     {
-        AX25Packet packet = new AX25Packet(frame);
-        packet.setDirection("rx");
-        if (packet.isValid())
+        try
         {
+            AX25Packet packet = new AX25Packet(frame);
+            packet.setDirection("rx");
             this.listeners.forEach((l) -> l.onReceived(packet));
+        } catch (Exception e) {
+            
         }
         this.lastKissPing = System.currentTimeMillis();
     }
 
     private void send(byte[] data) throws IOException
     {
-        this.kissProcessor.startKissPacket(kissProcessor.KISS_CMD_DATA);
-        for (byte b : data) {
-            this.kissProcessor.sendKissByte(b);
+        if (!this.txDisabled)
+        {
+            this.kissProcessor.startKissPacket(kissProcessor.KISS_CMD_DATA);
+            for (byte b : data) {
+                this.kissProcessor.sendKissByte(b);
+            }
+            this.kissProcessor.completeKissPacket();
         }
-        this.kissProcessor.completeKissPacket();
     }
 
     public void send(AX25Packet packet) throws IOException
     {
-        packet.setDirection("tx");
-        this.send(packet.bytesWithoutCRC());
-        this.listeners.forEach((l) -> l.onTransmit(packet));
+        if (!this.txDisabled)
+        {
+            packet.setDirection("tx");
+            packet.updatePayloadVar("{{ts}}", System.currentTimeMillis());
+            packet.updatePayloadVar("{{seq}}", this.txNumber);
+            this.send(packet.bytesWithoutCRC());
+            this.listeners.forEach((l) -> l.onTransmit(packet));
+        }
     }
 
     public void send(String from, String to, String data) throws IOException

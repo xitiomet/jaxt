@@ -48,9 +48,11 @@ Java AX25 Tool: A Java KISS TNC Client implementation
     "postUrl": "https://mywebsite.com/payloadhandler",
     "logPath": "./jaxt-logs/",
     "apiPort": 8101,
-    "apiPassword": "locked-down-password1234"
+    "apiPassword": "locked-down-password1234",
+    "txDisabled": false
 }
  ```
+ If you would like automatic persistent settings, save your config file as ".jaxt.json" in your home directory. JAXT will look for this file when no config file is specified. Or use the command line option "-f ~/.jaxt.json" to create this file automatically with the settings from the command line.
 
 
  ### Logging
@@ -83,6 +85,14 @@ Content-Type: application/json
     "path": ["WIDE1-1"]
 }
 ```
+* "source" - source callsign of packet with SSID specified as -1
+* "destination" - destination callsign of packet with SSID specified as -1
+* "timestamp" - timestamp at which JAXT received the packet
+* "payload" - body of the packet as a string
+* "control" - control field as an unsigned integer.
+* "protocol" - protocol field as an unsigned integer
+* "direction" - "rx" or "tx" did jaxt receive or transmit this packet
+* "path" - callsign path for digipeters.
 
 ### Websocket and HTTP API
 
@@ -92,10 +102,17 @@ Assuming the api port is set to 8101, You can connect to the server's websocket 
 
 ws://127.0.0.1:8101/jaxt/
 
-once connected you must transmit an object containing {"apiPassword":"xxxxxxx"} before you will receive any packets or be able to transmit.
+Once connected you must transmit an object containing {"apiPassword":"xxxxxxx"} before you will receive any packets or be able to transmit. This can even be included as a field in your first packet. 
 
 The format of AX.25 packets is the same as the POST packet format documented above. JSON objects should be sent as a single line.
 
 You can also view packets using the simple HTTP interface at:
 
 http://127.0.0.1:8101/
+
+### Other API paths
+
+* /jaxt/api/transmit/ - You can either POST a packet as a JSON object to this path, or by specifying "source", "destination", and "payload" parameters using GET. Both must include "apiPassword" field as well.
+
+* /jaxt/api/settings/ - Retrieve current JAXT settings. Must include "apiPassword" which is excluded from the response for security reasons.
+

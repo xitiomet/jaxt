@@ -61,6 +61,10 @@
                         document.getElementById('destination').value = data.destination;
                     }
                     
+                    if (data.hasOwnProperty('payload'))
+                    {
+                        document.getElementById('payload').value = data.payload;
+                    }
                 },
                 error: () => {}
             });

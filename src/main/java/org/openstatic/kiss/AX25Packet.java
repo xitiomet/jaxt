@@ -2,6 +2,7 @@ package org.openstatic.kiss;
 
 import java.nio.charset.Charset;
 import java.util.Date;
+import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -10,7 +11,7 @@ public class AX25Packet
 {
 	private String source, destination;
 	private String[] path;
-	private byte[] payload;
+	private String payload;
 	private Date timestamp;
 	private int control;
 	private int protocol;
@@ -30,7 +31,7 @@ public class AX25Packet
 	public static final int AX25_PROTOCOL_UNCOMPRESSED_TCPIP = 0x07;
 	public static final int AX25_PROTOCOL_NO_LAYER_3         = 0xF0; // used for APRS
 
-	private final int crc_ccitt_tab[] = {
+	private static final int crc_ccitt_tab[] = {
 	        0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
 	        0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
 	        0x1081, 0x0108, 0x3393, 0x221a, 0x56a5, 0x472c, 0x75b7, 0x643e,
@@ -65,28 +66,84 @@ public class AX25Packet
 	        0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78,
 	};
 
-	private int crc = CRC_CCITT_INIT_VAL;
-	private byte packet[] = new byte[MAX_FRAME_SIZE];
-	private int size = 0;
-
 	public void setDirection(String d)
 	{
 		this.direction = d;
 	}
-	
-	public byte[] bytesWithCRC()  
-	{ 
-		return Arrays.copyOf(packet, size); // trim the checksum
-	}
 
 	public byte[] bytesWithoutCRC()
-	{ 
+	{
+		int crc = CRC_CCITT_INIT_VAL;
+		byte packet[] = new byte[MAX_FRAME_SIZE];
+		int size = 0;
+		int cpfSize = 1;
+		if (this.control == AX25_CONTROL_APRS)
+		{
+			cpfSize = 2;
+		} else {
+			this.protocol = 0;
+		}
+		byte[] payloadArray = this.payload.getBytes(Charset.forName("US-ASCII"));
+		int n = 7 + 7 + 7*path.length + cpfSize + payloadArray.length;
+		byte[] bytes = new byte[n];
+		
+		int offset = 0;
+		
+		addCall(bytes, offset, this.destination, false);
+		offset += 7;
+		addCall(bytes, offset, this.source, path==null || path.length==0);
+		offset += 7;
+		for (int i=0; i < path.length; i++) 
+		{
+			addCall(bytes, offset, path[i], i==path.length-1);
+			offset += 7;
+		}
+		
+		bytes[offset++] = (byte) control;
+		if (control == AX25_CONTROL_APRS)
+		{
+			bytes[offset++] = (byte) protocol;
+			
+			for (int j=0; j<payloadArray.length; j++)
+			{
+				bytes[offset++] = payloadArray[j];
+			}
+		}
+		
+		assert (offset == n);
+		assert (size == 0);
+
+	    assert (crc == CRC_CCITT_INIT_VAL);
+	    assert (bytes.length+2 <= packet.length);
+	  
+		for (int i=0; i < bytes.length; i++) {
+			packet[size] = bytes[i];
+			crc = crc_ccitt_update(crc, packet[size]);
+			size++;
+		}
+		
+	    int crcl = (crc & 0xff) ^ 0xff;
+	    int crch = (crc >> 8) ^ 0xff;
+
+	    packet[size] = (byte) crcl;
+		crc = crc_ccitt_update(crc, packet[size]);
+		size++;
+
+	    packet[size] = (byte) crch;
+		crc = crc_ccitt_update(crc, packet[size]);
+		size++;
+		
+		assert (crc == AX25_CRC_CORRECT);
 		return Arrays.copyOf(packet, size-2); // trim the checksum
 	}
 	
 	// this constructor is used for sending packets from raw bytes
 	public AX25Packet(byte[] bytes) 
 	{
+	    int crc = CRC_CCITT_INIT_VAL;
+		byte packet[] = new byte[MAX_FRAME_SIZE];
+		int size = 0;
+
 		this.timestamp = new Date(System.currentTimeMillis());
 		this.direction = null;
 	  	assert (crc == CRC_CCITT_INIT_VAL);
@@ -94,7 +151,7 @@ public class AX25Packet
 	  
 		for (int i=0; i<bytes.length; i++) {
 			packet[size] = bytes[i];
-			crc_ccitt_update(packet[size]);
+			crc = crc_ccitt_update(crc, packet[size]);
 			size++;
 		}
 		
@@ -102,25 +159,22 @@ public class AX25Packet
 	  	int crch = (crc >> 8) ^ 0xff;
 
 	  	packet[size] = (byte) crcl;
-		crc_ccitt_update(packet[size]);
+		crc = crc_ccitt_update(crc, packet[size]);
 		size++;
 
 	  	packet[size] = (byte) crch;
-		crc_ccitt_update(packet[size]);
+		crc = crc_ccitt_update(crc, packet[size]);
 		size++;
 		
-		assert (crc == AX25_CRC_CORRECT);
-        parse();
-	}
-
-	public void parse() 
-    {
+		assert (crc == AX25_CRC_CORRECT) : "Invalid CRC";
 		int offset= 0;
 		this.destination = parseCall(packet,offset);
 		offset += 7;
 		this.source = parseCall(packet,offset);
 		offset += 7;
 		
+		assert (!containsNonKeyboardChars(this.source) && !containsNonKeyboardChars(this.destination)) : "Bad characters in callsign";
+
 		int repeaters = 0;
 		while (offset+7 <= size && (packet[offset-1] & 0x01) == 0) {
 			repeaters++;
@@ -138,30 +192,34 @@ public class AX25Packet
 		
 		//offset += 2; // skip PID, control
         this.control = ((int) packet[offset++]) & 0xffff;
+		byte[] payloadArray = new byte[0];
 		if (this.control == AX25_CONTROL_APRS)
 		{
 			this.protocol = ((int) packet[offset++]) & 0xff;
 
 			if (size >= 18)
 			{
-				this.payload = Arrays.copyOfRange(packet, offset, (size - 2)); // chop off CRC
-			} else {
-				this.payload = new byte[0];
+				payloadArray = Arrays.copyOfRange(packet, offset, (size - 2)); // chop off CRC
 			}
 		} else {
 			this.protocol = 0;
-			this.payload = new byte[0];
 		}
+		this.payload = new String(payloadArray);
 	}
 
 	public AX25Packet(JSONObject packet)
     {
-        this(packet.optString("destination"), packet.optString("source"), new String[] {}, packet.optInt("control", AX25Packet.AX25_CONTROL_APRS) & 0xffff, packet.optInt("protocol", AX25Packet.AX25_PROTOCOL_NO_LAYER_3) & 0xff, packet.optString("payload", "").getBytes(Charset.forName("US-ASCII")));
+        this(packet.optString("destination", "NOCALL"), 
+		     packet.optString("source", "NOCALL"), 
+			 new String[] {},
+			 packet.optInt("control", AX25Packet.AX25_CONTROL_APRS) & 0xffff, 
+			 packet.optInt("protocol", AX25Packet.AX25_PROTOCOL_NO_LAYER_3) & 0xff, 
+			 packet.optString("payload", ""));
     }
 
     public AX25Packet(String source, String destination, String payload)
     {
-        this(destination, source, new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, payload.getBytes(Charset.forName("US-ASCII")));
+        this(destination, source, new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, payload);
     }
 	
 	public AX25Packet(String destination,
@@ -169,7 +227,7 @@ public class AX25Packet
 			          String[] path,
 			          int      control,
 			          int      protocol,
-			          byte[]   payload) 
+			          String   payload) 
     {
 		this.direction = null;
 		this.timestamp = new Date(System.currentTimeMillis());
@@ -177,73 +235,25 @@ public class AX25Packet
 		this.path = path;
 		this.control = control;
 		this.protocol = protocol;
-		
 		if (source != null)
-			this.source = source.toUpperCase();
-		else
+		{
+			if (source.length() == 0)
+				this.source = "NOCALL";
+			else
+				this.source = source.toUpperCase();
+		} else {
 			this.source = "NOCALL";
+		}
 		
 		if (destination != null)
-			this.destination = destination.toUpperCase();
-		else
-			this.destination = "NOCALL";
-		int cpfSize = 1;
-		if (this.control == AX25_CONTROL_APRS)
 		{
-			cpfSize = 2;
+			if (destination.length() == 0)
+				this.destination = "NOCALL";
+			else
+				this.destination = destination.toUpperCase();
 		} else {
-			this.protocol = 0;
+			this.destination = "NOCALL";
 		}
-		int n = 7 + 7 + 7*path.length + cpfSize + payload.length;
-		byte[] bytes = new byte[n];
-		
-		int offset = 0;
-		
-		addCall(bytes, offset, destination, false);
-		offset += 7;
-		addCall(bytes, offset, source, path==null || path.length==0);
-		offset += 7;
-		for (int i=0; i < path.length; i++) 
-		{
-			addCall(bytes, offset, path[i], i==path.length-1);
-			offset += 7;
-		}
-		
-		bytes[offset++] = (byte) control;
-		if (control == AX25_CONTROL_APRS)
-		{
-			bytes[offset++] = (byte) protocol;
-			
-			for (int j=0; j<payload.length; j++)
-			{
-				bytes[offset++] = payload[j];
-			}
-		}
-		
-		assert(offset == n);
-		assert(size == 0);
-
-	    assert (crc == CRC_CCITT_INIT_VAL);
-	    assert (bytes.length+2 <= packet.length);
-	  
-		for (int i=0; i < bytes.length; i++) {
-			packet[size] = bytes[i];
-			crc_ccitt_update(packet[size]);
-			size++;
-		}
-		
-	    int crcl = (crc & 0xff) ^ 0xff;
-	    int crch = (crc >> 8) ^ 0xff;
-
-	    packet[size] = (byte) crcl;
-		crc_ccitt_update(packet[size]);
-		size++;
-
-	    packet[size] = (byte) crch;
-		crc_ccitt_update(packet[size]);
-		size++;
-		
-		assert (crc == AX25_CRC_CORRECT);
 	}
 
 	static void addCall(byte[] bytes, int offset, String call, boolean last)
@@ -302,27 +312,25 @@ public class AX25Packet
 		return this.path;
 	}
 
-    public String getPayloadAsString()
+    public String getPayload()
     {
-		if (payload != null)
-		{
-			if (payload.length > 0)
-			{
-				int firstNull = 0;
-				for (int i = 0; i < payload.length; i++)
-				{
-					if (payload[i] == 0x00)
-					{
-						firstNull = i;
-						break;
-					}
-				}
-				if (firstNull == 0) firstNull = payload.length;
-				return new String(Arrays.copyOf(payload, firstNull));
-			}
-		}
-		return "";
+		return this.payload;
     }
+
+	public void updatePayloadVar(String varName, long value)
+	{
+		updatePayloadVar(varName, String.valueOf(value));
+	}
+
+	public void updatePayloadVar(String varName, int value)
+	{
+		updatePayloadVar(varName, String.valueOf(value));
+	}
+
+	public void updatePayloadVar(String varName, String value)
+	{
+		this.payload = this.payload.replaceAll(Pattern.quote(varName), value);
+	}
 	
 	private static String parseCall(byte[] packet, int offset) 
     {
@@ -345,37 +353,10 @@ public class AX25Packet
 		return new String(call);
 	}
 	
-    private void crc_ccitt_update(byte b) 
+    private static int crc_ccitt_update(int crc,byte b) 
     {
-        crc = (crc >> 8) ^ crc_ccitt_tab[(crc ^ b) & 0xff];
+        return (crc >> 8) ^ crc_ccitt_tab[(crc ^ b) & 0xff];
     }
-
-	public boolean addByte(byte b)
-    {
-		if (size >= MAX_FRAME_SIZE) return false;
-		
-		crc_ccitt_update(b);
-		
-		packet[size] = b;
-		size++;
-		
-		return true;
-	}
-	
-	private boolean checksumOk() 
-    {
-		if (size < 17) return true;
-		if (crc == AX25_CRC_CORRECT) {
-			//System.out.println("CRC Correct!\n");
-			return true;
-		} else
-			return false;
-	}
-
-	public boolean isValid()
-	{
-		return !containsNonKeyboardChars(this.source) && !containsNonKeyboardChars(this.destination) && checksumOk();
-	}
 
 	private static boolean containsNonKeyboardChars(String str) {
 		String keyboardChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`~!@#$%^&*()-_=+[{]}\\|;:'\",<.>/? ";
@@ -388,47 +369,25 @@ public class AX25Packet
 		return false;
 	}
 
-	@Override
-	public String toString() 
-    {
-		parse();
-		StringBuilder builder = new StringBuilder();
-		builder.append("[");
-		
-		builder.append(source);
-		builder.append('>');
-		builder.append(destination);
-		if (path!=null) for (String via: path) {
-			builder.append(',');
-			builder.append(via);
-		}
-		builder.append(':');
-		
-		for (int i=0; i<payload.length; i++) {
-			char c = (char) payload[i];
-			if (c >= 0x20 && c <= 0x7E) builder.append(c);
-			else builder.append(String.format("\\x%02x",payload[i]));
-		}
-		builder.append("]");
-		return builder.toString();
-	}
-
 	public JSONObject toJSONObject()
 	{
 		JSONObject ro = new JSONObject();
 		ro.put("source", this.getSourceCallsign());
 		ro.put("destination", this.getDestinationCallsign());
-		if (payload != null)
+		if (this.payload != null)
 		{
-			if (payload.length > 0)
-				ro.put("payload", this.getPayloadAsString());
+			if (payload.length() > 0)
+				ro.put("payload", this.getPayload());
 		}
 		ro.put("control", this.control & 0xffff);
 		if (this.protocol > 0)
 			ro.put("protocol", this.protocol & 0xff);
 		if (this.direction != null)
 			ro.put("direction", this.direction);
-		ro.put("size", this.size);
+		try
+		{
+			ro.put("size", this.bytesWithoutCRC().length);
+		} catch (Exception x) {}
 		if (this.path != null)
 		{
 			if (this.path.length > 0)
@@ -440,6 +399,6 @@ public class AX25Packet
 
 	public String toLogString()
 	{
-		return this.getSourceCallsign() + " > " + this.getDestinationCallsign() + ": " + this.getPayloadAsString();
+		return this.getSourceCallsign() + " > " + this.getDestinationCallsign() + ": " + this.getPayload();
 	}
 }
