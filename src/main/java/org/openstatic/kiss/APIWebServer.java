@@ -73,20 +73,27 @@ public class APIWebServer implements AX25PacketListener, Runnable
             this.packetHistory.remove(0);
     }
 
+    public static void sendAuthOk(WebSocketSession session)
+    {
+        JSONObject authJsonObject = new JSONObject();
+        authJsonObject.put("action", "authOk");
+        authJsonObject.put("kissConnected", APIWebServer.instance.kClient.isConnected());
+        authJsonObject.put("txDisabled", JavaKISSMain.settings.optBoolean("txDisabled", false));
+        authJsonObject.put("availableHistory", APIWebServer.instance.packetHistory.size());
+        session.getRemote().sendStringByFuture(authJsonObject.toString());
+    }
+
     public void handleWebSocketEvent(JSONObject j, WebSocketSession session) 
     {
         JSONObject sessionProperties = this.sessionProps.get(session);
         if (!sessionProperties.optBoolean("auth", false))
         {
-            if (JavaKISSMain.settings.optString("apiPassword","").equals(j.optString("apiPassword","")))
+            String settingPassword = JavaKISSMain.settings.optString("apiPassword","");
+            boolean authGood = settingPassword.equals(j.optString("apiPassword",""));
+            if (authGood)
             {
                 sessionProperties.put("auth", true);
-                JSONObject authJsonObject = new JSONObject();
-                authJsonObject.put("action", "authOk");
-                authJsonObject.put("kissConnected", APIWebServer.instance.kClient.isConnected());
-                authJsonObject.put("txDisabled", JavaKISSMain.settings.optBoolean("txDisabled", false));
-                authJsonObject.put("availableHistory", this.packetHistory.size());
-                session.getRemote().sendStringByFuture(authJsonObject.toString());
+                sendAuthOk(session);
             } else {
                 JSONObject errorJsonObject = new JSONObject();
                 errorJsonObject.put("action", "authFail");
@@ -173,7 +180,15 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 WebSocketSession wssession = (WebSocketSession) session;
                 //System.out.println(wssession.getRemoteAddress().getHostString() + " connected!");
                 APIWebServer.instance.wsSessions.add(wssession);
-                APIWebServer.instance.sessionProps.put(wssession, new JSONObject());
+                JSONObject sessionProperties = new JSONObject();
+                String settingPassword = JavaKISSMain.settings.optString("apiPassword","");
+
+                if (settingPassword.equals(""))
+                {
+                    sessionProperties.put("auth", true);
+                    APIWebServer.sendAuthOk(wssession);
+                }
+                APIWebServer.instance.sessionProps.put(wssession, sessionProperties);
             } else {
                 //System.err.println("Not an instance of WebSocketSession");
             }

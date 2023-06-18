@@ -2,6 +2,7 @@
 <head>
     <script src="jquery.min.js"></script>
     <script type="text/javascript">
+        var txCount = 0;
         var apiPassword = "";
 
         function getParameterByName(name, url = window.location.href) 
@@ -14,20 +15,60 @@
             return decodeURIComponent(results[2].replace(/\+/g, ' '));
         }
 
-        function transmit()
+        function cancelTransmit()
         {
             var txButton = document.getElementById('txButton');
+            var txCountSelect = document.getElementById('txCount');
+            var txCancelButton = document.getElementById('txCancel');
+            txButton.innerText = "Transmit";
+            txButton.disabled = false;
+            txCountSelect.disabled = false;
+            txCancelButton.disabled = true;
+        }
+
+        function transmit(txCount)
+        {
+            var txButton = document.getElementById('txButton');
+            var txCancelButton = document.getElementById('txCancel');
+            var txCountSelect = document.getElementById('txCount');
+            var txCountTotal = txCountSelect.value;
+            txButton.innerHTML = "Transmit #" + txCount;
             txButton.disabled = true;
+            txCountSelect.disabled = true;
+            txCancelButton.disabled = false;
             var source = document.getElementById('source').value;
             var destination = document.getElementById('destination').value;
             var payload = document.getElementById('payload').value;
             var txCode = {
                 "source": source,
                 "destination": destination,
-                "payload": payload,
+                "payload": payload.replace('{{tx}}', (txCountTotal - txCount) + 1),
                 "apiPassword": apiPassword
             };
-            postJSON("jaxt/api/transmit/", txCode, () => { txButton.disabled = false; }, (error) => { alert("Error Transmitting"); txButton.disabled = false; });
+            postJSON("jaxt/api/transmit/", 
+                    txCode,
+                    () => { 
+                        txCount--;
+                        if (txCount <= 0)
+                        {
+                            txButton.innerText = "Transmit";
+                            txButton.disabled = false;
+                            txCountSelect.disabled = false;
+                            txCancelButton.disabled = true;
+                        } else {
+                            setTimeout(() => {
+                                if (txButton.disabled)
+                                {
+                                    transmit(txCount);
+                                }
+                            },parseInt(document.getElementById('txDelay').value));
+                        }
+                    }, (error) => { 
+                        alert("Error Transmitting"); 
+                        txButton.disabled = false;
+                        txCountSelect.disabled = false;
+                        txCancelButton.disabled = true;
+                    });
         }
 
         function postJSON(url, data, onSuccess, onError) {
@@ -63,7 +104,9 @@
                     
                     if (data.hasOwnProperty('payload'))
                     {
-                        document.getElementById('payload').value = data.payload;
+                        var payloadBox = document.getElementById('payload');
+                        payloadBox.value = data.payload;
+                        document.getElementById('pSize').innerHTML = payloadBox.value.length;
                     }
                 },
                 error: () => {}
@@ -77,19 +120,41 @@
     <table>
         <tr>
             <td>Source</td>
-            <td><input type="text" id="source" placeholder="NOCALL" /></td>
+            <td><input type="text" id="source" placeholder="NOCALL" maxlength="9" /></td>
         </tr>
         <tr>
             <td>Destination</td>
-            <td><input type="text" id="destination" placeholder="NOCALL" /></td>
+            <td><input type="text" id="destination" placeholder="NOCALL" maxlength="9" /></td>
         </tr>
         <tr>
-            <td>Payload</td>
-            <td><textarea id="payload" rows="10" cols="40" /></textarea></td>
+            <td>Payload<br />(<span id="pSize">0</span> / 255)</td>
+            <td><textarea id="payload" rows="10" cols="40" maxlength="255" onkeypress="document.getElementById('pSize').innerHTML = this.value.length;" onchange="document.getElementById('pSize').innerHTML = this.value.length;" /></textarea></td>
         </tr>
         <tr>
             <td></td>
-            <td><button id="txButton" onclick="transmit()">Transmit</button></td>
+            <td>
+                <button id="txButton" onclick="transmit(document.getElementById('txCount').value)">Transmit</button>
+                <select id="txCount">
+                    <option value="1">x1</option>
+                    <option value="3">x3</option>
+                    <option value="5">x5</option>
+                    <option value="10">x10</option>
+                    <option value="15">x15</option>
+                    <option value="25">x25</option>
+                    <option value="50">x50</option>
+                </select>
+                <select id="txDelay">
+                    <option value="1000">1 second</option>
+                    <option value="3000">3 seconds</option>
+                    <option value="5000">5 seconds</option>
+                    <option value="10000">10 seconds</option>
+                    <option value="15000">15 seconds</option>
+                    <option value="25000">30 seconds</option>
+                    <option value="60000">1 minute</option>
+                    <option value="300000">5 minutes</option>
+                </select>
+                <button id="txCancel" onclick="cancelTransmit()" disabled="true">Cancel</button>
+            </td>
         </tr>
     </table>
 </body>
