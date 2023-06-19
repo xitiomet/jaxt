@@ -16,6 +16,7 @@ public class AX25Packet
 	private int control;
 	private int protocol;
 	private String direction;
+	private String commandResponse;
 
     private final int AX25_CRC_CORRECT   = 0xF0B8;
 	private final int CRC_CCITT_INIT_VAL = 0xFFFF;
@@ -88,14 +89,27 @@ public class AX25Packet
 		byte[] bytes = new byte[n];
 		
 		int offset = 0;
+		boolean sourceCBit = false;
+		boolean destCBit = false;
+		if (this.commandResponse == null)
+		{
+			sourceCBit = false;
+			destCBit = false;
+		} else if ("C".equals(this.commandResponse.toUpperCase())) {
+			sourceCBit = false;
+			destCBit = true;
+		} else if ("R".equals(this.commandResponse.toUpperCase())) {
+			sourceCBit = true;
+			destCBit = false;
+		}
 		
-		addCall(bytes, offset, this.destination, false);
+		addCall(bytes, offset, this.destination, false, destCBit);
 		offset += 7;
-		addCall(bytes, offset, this.source, path==null || path.length==0);
+		addCall(bytes, offset, this.source, path==null || path.length==0, sourceCBit);
 		offset += 7;
 		for (int i=0; i < path.length; i++) 
 		{
-			addCall(bytes, offset, path[i], i==path.length-1);
+			addCall(bytes, offset, path[i], i==path.length-1, false);
 			offset += 7;
 		}
 		
@@ -169,10 +183,21 @@ public class AX25Packet
 		assert (crc == AX25_CRC_CORRECT) : "Invalid CRC";
 		int offset= 0;
 		this.destination = parseCall(packet,offset);
+		boolean destCBit = parseCallCBit(packet, offset);
 		offset += 7;
 		this.source = parseCall(packet,offset);
+		boolean sourceCBit = parseCallCBit(packet, offset);
 		offset += 7;
 		
+		if (!sourceCBit && destCBit)
+		{
+			this.commandResponse = "C";
+		} else if (sourceCBit && !destCBit) {
+			this.commandResponse = "R";
+		} else {
+			this.commandResponse = null;
+		}
+
 		assert (!containsNonKeyboardChars(this.source) && !containsNonKeyboardChars(this.destination)) : "Bad characters in callsign";
 
 		int repeaters = 0;
@@ -191,9 +216,9 @@ public class AX25Packet
 		}
 		
 		//offset += 2; // skip PID, control
-        this.control = ((int) packet[offset++]) & 0xffff;
+        this.control = ((int) packet[offset++]) & 0xff;
 		byte[] payloadArray = new byte[0];
-		if (this.control == AX25_CONTROL_APRS)
+		if ((this.control & 0b11) != 2)
 		{
 			this.protocol = ((int) packet[offset++]) & 0xff;
 
@@ -207,19 +232,24 @@ public class AX25Packet
 		this.payload = new String(payloadArray);
 	}
 
+	public static AX25Packet buildResponse(AX25Packet packet, int control)
+	{
+		return new AX25Packet(packet.getSourceCallsign(), packet.getDestinationCallsign(), packet.getPath(), control, AX25_PROTOCOL_NO_LAYER_3, "", "R");
+	}
+
 	public AX25Packet(JSONObject packet)
     {
         this(packet.optString("destination", "NOCALL"), 
 		     packet.optString("source", "NOCALL"), 
 			 new String[] {},
-			 packet.optInt("control", AX25Packet.AX25_CONTROL_APRS) & 0xffff, 
+			 packet.optInt("control", AX25Packet.AX25_CONTROL_APRS) & 0xff, 
 			 packet.optInt("protocol", AX25Packet.AX25_PROTOCOL_NO_LAYER_3) & 0xff, 
-			 packet.optString("payload", ""));
+			 packet.optString("payload", ""), packet.optString("commandResponse", null));
     }
 
     public AX25Packet(String source, String destination, String payload)
     {
-        this(destination, source, new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, payload);
+        this(destination, source, new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, payload, null);
     }
 	
 	public AX25Packet(String destination,
@@ -227,7 +257,7 @@ public class AX25Packet
 			          String[] path,
 			          int      control,
 			          int      protocol,
-			          String   payload) 
+			          String   payload, String commandResponse) 
     {
 		this.direction = null;
 		this.timestamp = new Date(System.currentTimeMillis());
@@ -235,6 +265,7 @@ public class AX25Packet
 		this.path = path;
 		this.control = control;
 		this.protocol = protocol;
+		this.commandResponse = commandResponse;
 		if (source != null)
 		{
 			if (source.length() == 0)
@@ -256,7 +287,151 @@ public class AX25Packet
 		}
 	}
 
-	static void addCall(byte[] bytes, int offset, String call, boolean last)
+	public int getControl()
+	{
+		return this.control;
+	}
+	
+	public Date getTimestamp()
+	{
+		return this.timestamp;
+	}
+
+    public String getSourceCallsign()
+    {
+        return this.source;
+    }
+
+    public String getDestinationCallsign()
+    {
+        return this.destination;
+    }
+
+	public String[] getPath()
+	{
+		if (this.path != null)
+			return this.path;
+		else
+			return new String[] {};
+	}
+
+    public String getPayload()
+    {
+		return this.payload;
+    }
+
+	public void updatePayloadVar(String varName, long value)
+	{
+		updatePayloadVar(varName, String.valueOf(value));
+	}
+
+	public void updatePayloadVar(String varName, int value)
+	{
+		updatePayloadVar(varName, String.valueOf(value));
+	}
+
+	public void updatePayloadVar(String varName, String value)
+	{
+		if (this.payload !=null)
+		{
+			this.payload = this.payload.replaceAll(Pattern.quote(varName), value);
+		}
+	}
+	
+	private static String parseCall(byte[] packet, int offset) 
+    {
+		String call = "";
+		int c, i;
+		//int size = 0;
+		
+		for (i=0; i<6; i++) {
+			c = (packet[offset+i] > 0) ? packet[offset+i] >> 1 : (packet[offset+i]+256) >> 1;
+			//System.out.printf("Parsing byte %02x offset %d <%c>\n",c,offset+i,(char)c);
+			if ((char) c != ' ')
+				call += (char) c;
+		}
+		
+		c = (packet[offset+i] > 0) ? packet[offset+i] >> 1 : (packet[offset+i]+256) >> 1;
+		int ssid = c & 0x0f;
+	  if (ssid != 0)
+	  	call += String.format("-%d", ssid);
+		
+		return new String(call);
+	}
+
+	private static JSONArray decodeControl(String cr, int controlNumber)
+	{
+		JSONArray ra = new JSONArray();
+		if ((controlNumber & 0b11) == 0b01) // supervisory
+		{
+			int filtered = controlNumber & 0b1111;
+			if (filtered == 0b0001)
+			{
+				ra.put("RR");
+				int filtered_b = controlNumber & 0b11100000;
+				ra.put("#" + String.valueOf((filtered_b >> 5) & 0b111 ));
+			}
+			if (filtered == 0b0101)
+			{
+				ra.put("RNR");
+			}
+			if (filtered == 0b1001)
+			{
+				ra.put("REJ");
+			}
+			if (filtered == 0b1101)
+			{
+				ra.put("SREJ");
+			}
+		} else if ((controlNumber & 0b11) == 0b11) {
+			int filtered = controlNumber & 0b11111111;
+			if (filtered == 0b01111111)
+			{
+				ra.put("SABME");
+			}
+			if (filtered == 0b00111111)
+			{
+				ra.put("SABM");
+			}
+			if (filtered == 0b01010011)
+			{
+				ra.put("DISC");
+			}
+			if (filtered == 0b01100011)
+			{
+				ra.put("UA");
+			}
+			if (filtered == 0b00000011)
+			{
+				ra.put("UI");
+			}
+			
+		} else if ((controlNumber & 0b1) == 0b0) { // I frames
+			int filtered = controlNumber & 0b11111111;
+			ra.put("I");
+			ra.put("#" + String.valueOf( (filtered >> 5) & 0b111 ));
+		}
+		if (cr != null)
+		{
+			if (cr.toUpperCase().equals("C"))
+			{
+				ra.put("C");
+			} else if (cr.toUpperCase().equals("R")) {
+				ra.put("R");
+			}
+		}
+		return ra;
+	}
+
+	private static boolean parseCallCBit(byte[] packet, int offset) 
+    {
+		int c, i = 6;
+		c = (packet[offset+i] > 0) ? packet[offset+i] >> 1 : (packet[offset+i]+256) >> 1;	
+		int cBit = c & 0xE0;
+		return cBit == 96;
+	}
+
+	private static void addCall(byte[] bytes, int offset, String call, boolean last, boolean cBit)
     {
         int i;
         boolean call_ended = false;
@@ -288,69 +463,8 @@ public class AX25Packet
         }
 
         /* The low-order bit of last call SSID should be set to 1 */
-        ssid = (ssid << 1) | (0x60) | (last ? 0x01 : 0);
+        ssid = (ssid << 1) | (cBit ? 0xE0 : 0x60) | (last ? 0x01 : 0);
         bytes[offset++] = (byte) ssid;
-	}
-	
-	public Date getTimestamp()
-	{
-		return this.timestamp;
-	}
-
-    public String getSourceCallsign()
-    {
-        return this.source;
-    }
-
-    public String getDestinationCallsign()
-    {
-        return this.destination;
-    }
-
-	public String[] getPath()
-	{
-		return this.path;
-	}
-
-    public String getPayload()
-    {
-		return this.payload;
-    }
-
-	public void updatePayloadVar(String varName, long value)
-	{
-		updatePayloadVar(varName, String.valueOf(value));
-	}
-
-	public void updatePayloadVar(String varName, int value)
-	{
-		updatePayloadVar(varName, String.valueOf(value));
-	}
-
-	public void updatePayloadVar(String varName, String value)
-	{
-		this.payload = this.payload.replaceAll(Pattern.quote(varName), value);
-	}
-	
-	private static String parseCall(byte[] packet, int offset) 
-    {
-		String call = "";
-		int c, i;
-		//int size = 0;
-		
-		for (i=0; i<6; i++) {
-			c = (packet[offset+i] > 0) ? packet[offset+i] >> 1 : (packet[offset+i]+256) >> 1;
-			//System.out.printf("Parsing byte %02x offset %d <%c>\n",c,offset+i,(char)c);
-			if ((char) c != ' ')
-				call += (char) c;
-		}
-		
-		c = (packet[offset+i] > 0) ? packet[offset+i] >> 1 : (packet[offset+i]+256) >> 1;	
-		int ssid = c & 0x0f;
-	  if (ssid != 0)
-	  	call += String.format("-%d", ssid);
-		
-		return new String(call);
 	}
 	
     private static int crc_ccitt_update(int crc,byte b) 
@@ -379,7 +493,12 @@ public class AX25Packet
 			if (payload.length() > 0)
 				ro.put("payload", this.getPayload());
 		}
-		ro.put("control", this.control & 0xffff);
+		if (this.commandResponse != null)
+		{
+			ro.put("commandResponse", this.commandResponse);
+		}
+		ro.put("control", this.control & 0xff);
+		ro.put("controlDecoded", decodeControl(this.commandResponse, this.control));
 		if (this.protocol > 0)
 			ro.put("protocol", this.protocol & 0xff);
 		if (this.direction != null)

@@ -14,7 +14,7 @@
     <imageName>jaxt</imageName>
     <graalvm.version>22.3.0</graalvm.version>
     <jettyVersion>9.4.40.v20210413</jettyVersion>
-    <skipNative>false</skipNative>
+    <skipNative>true</skipNative>
   </properties>
   <dependencies>
     <dependency>
