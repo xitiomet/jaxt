@@ -283,7 +283,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     {
                         try 
                         {
-                            AX25Packet packet = new AX25Packet(request.getParameter("source"), request.getParameter("destination"), request.getParameter("payload"));
+                            AX25Packet packet = AX25Packet.buildPacket(request.getParameter("source"), request.getParameter("destination"), request.getParameter("payload"));
                             APIWebServer.instance.kClient.send(packet);
                             response.put("transmitted", packet.toJSONObject());
                         } catch (Exception x) {

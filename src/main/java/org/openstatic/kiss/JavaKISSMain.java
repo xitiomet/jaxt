@@ -58,7 +58,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             {
                 Thread.sleep(JavaKISSMain.settings.optLong("txTestInterval", 10000));
                 String payload = settings.optString("payload","JAXT Test Transmission @{{ts}} #{{seq}}");
-                AX25Packet packet = new AX25Packet(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
+                AX25Packet packet = AX25Packet.buildPacket(settings.optString("source", "NOCALL1"), settings.optString("destination", "NOCALL2"), payload);
                 kClient.send(packet);
             } catch (Exception e) {
                 log(e);
@@ -180,6 +180,8 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             kClient.setTxDisabled(settings.optBoolean("txDisabled", false));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
             saveSettings();
+            TerminalLink tl = new TerminalLink(kClient, "BLOOP");
+            //testControlCoding();
             Runtime.getRuntime().addShutdownHook(new Thread() 
             { 
                 public void run() 
@@ -192,6 +194,30 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             //e.printStackTrace(System.err);
             System.err.println(e.getLocalizedMessage());
         }
+    }
+
+    public static void testControlCoding()
+    {
+        JSONArray t1 = new JSONArray();
+        t1.put("I");
+        t1.put("S2");
+        t1.put("R3");
+        int control = AX25Packet.encodeControl(t1);
+
+        JSONArray t1r = AX25Packet.decodeControl(null, control);
+        System.err.println("TEST1");
+        System.err.println(t1.toString());
+        System.err.println(t1r.toString());
+
+        JSONArray t2 = new JSONArray();
+        t2.put("RR");
+        t2.put("R3");
+        int control2 = AX25Packet.encodeControl(t2);
+
+        JSONArray t2r = AX25Packet.decodeControl(null, control2);
+        System.err.println("TEST2");
+        System.err.println(t2.toString());
+        System.err.println(t2r.toString());
     }
 
     public static void showHelp(Options options)

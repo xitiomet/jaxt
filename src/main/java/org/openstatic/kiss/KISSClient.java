@@ -237,7 +237,7 @@ public class KISSClient implements Runnable
 
     public void send(String from, String to, String data) throws IOException
     {
-        AX25Packet packet = new AX25Packet(from, to, data);
+        AX25Packet packet = AX25Packet.buildPacket(from, to, data);
         this.send(packet);
     }
 }

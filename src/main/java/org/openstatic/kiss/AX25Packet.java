@@ -1,8 +1,12 @@
 package org.openstatic.kiss;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collector;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -13,10 +17,11 @@ public class AX25Packet
 	private String[] path;
 	private String payload;
 	private Date timestamp;
-	private int control;
+	private JSONArray control;
 	private int protocol;
 	private String direction;
 	private String commandResponse;
+	//private JSONArray control;
 
     private final int AX25_CRC_CORRECT   = 0xF0B8;
 	private final int CRC_CCITT_INIT_VAL = 0xFFFF;
@@ -27,7 +32,13 @@ public class AX25Packet
 		                  +256            // information
 		                  +2;             // frame checksum
 	
-	public static final int AX25_CONTROL_APRS                = 0x03;
+	public static final int AX25_CONTROL_UI                = 0b00000011;
+	public static final int AX25_CONTROL_DISC              = 0b01010011;
+	public static final int AX25_CONTROL_SABM              = 0b00111111;
+	public static final int AX25_CONTROL_SABME             = 0b01111111;
+	public static final int AX25_CONTROL_UA                = 0b01100011;
+
+
 	public static final int AX25_PROTOCOL_COMPRESSED_TCPIP   = 0x06;
 	public static final int AX25_PROTOCOL_UNCOMPRESSED_TCPIP = 0x07;
 	public static final int AX25_PROTOCOL_NO_LAYER_3         = 0xF0; // used for APRS
@@ -78,7 +89,9 @@ public class AX25Packet
 		byte packet[] = new byte[MAX_FRAME_SIZE];
 		int size = 0;
 		int cpfSize = 1;
-		if (this.control == AX25_CONTROL_APRS)
+		int controlNumber = encodeControl(this.control);
+		boolean uiOri = JSONArrayContains(control, "I") || JSONArrayContains(control, "UI");
+		if (uiOri)
 		{
 			cpfSize = 2;
 		} else {
@@ -91,15 +104,14 @@ public class AX25Packet
 		int offset = 0;
 		boolean sourceCBit = false;
 		boolean destCBit = false;
-		if (this.commandResponse == null)
-		{
-			sourceCBit = false;
-			destCBit = false;
-		} else if ("C".equals(this.commandResponse.toUpperCase())) {
+		if (JSONArrayContains(control, "C")) {
 			sourceCBit = false;
 			destCBit = true;
-		} else if ("R".equals(this.commandResponse.toUpperCase())) {
+		} else if (JSONArrayContains(control, "R")) {
 			sourceCBit = true;
+			destCBit = false;
+		} else {
+			sourceCBit = false;
 			destCBit = false;
 		}
 		
@@ -113,8 +125,8 @@ public class AX25Packet
 			offset += 7;
 		}
 		
-		bytes[offset++] = (byte) control;
-		if (control == AX25_CONTROL_APRS)
+		bytes[offset++] = (byte) controlNumber;
+		if (uiOri)
 		{
 			bytes[offset++] = (byte) protocol;
 			
@@ -189,13 +201,14 @@ public class AX25Packet
 		boolean sourceCBit = parseCallCBit(packet, offset);
 		offset += 7;
 		
+		String commandResponse = null;
 		if (!sourceCBit && destCBit)
 		{
-			this.commandResponse = "C";
+			commandResponse = "C";
 		} else if (sourceCBit && !destCBit) {
-			this.commandResponse = "R";
+			commandResponse = "R";
 		} else {
-			this.commandResponse = null;
+			commandResponse = null;
 		}
 
 		assert (!containsNonKeyboardChars(this.source) && !containsNonKeyboardChars(this.destination)) : "Bad characters in callsign";
@@ -216,9 +229,10 @@ public class AX25Packet
 		}
 		
 		//offset += 2; // skip PID, control
-        this.control = ((int) packet[offset++]) & 0xff;
+        int controlNumber = ((int) packet[offset++]) & 0xff;
 		byte[] payloadArray = new byte[0];
-		if ((this.control & 0b11) != 2)
+		this.control = decodeControl(commandResponse, controlNumber);
+		if (this.controlContains("UI") || this.controlContains("I"))
 		{
 			this.protocol = ((int) packet[offset++]) & 0xff;
 
@@ -232,64 +246,54 @@ public class AX25Packet
 		this.payload = new String(payloadArray);
 	}
 
-	public static AX25Packet buildResponse(AX25Packet packet, int control)
+	public static AX25Packet buildResponse(AX25Packet packet, JSONArray control)
 	{
-		return new AX25Packet(packet.getSourceCallsign(), packet.getDestinationCallsign(), packet.getPath(), control, AX25_PROTOCOL_NO_LAYER_3, "", "R");
+		JSONObject reverse = new JSONObject();
+		reverse.put("source", packet.getDestinationCallsign());
+		reverse.put("destination", packet.getSourceCallsign());
+		if (!JSONArrayContains(control, "R"))
+			control.put("R");
+		reverse.put("control", control);
+		return new AX25Packet(reverse);
 	}
 
-	public AX25Packet(JSONObject packet)
+    public static AX25Packet buildPacket(String source, String destination, String payload)
     {
-        this(packet.optString("destination", "NOCALL"), 
-		     packet.optString("source", "NOCALL"), 
-			 new String[] {},
-			 packet.optInt("control", AX25Packet.AX25_CONTROL_APRS) & 0xff, 
-			 packet.optInt("protocol", AX25Packet.AX25_PROTOCOL_NO_LAYER_3) & 0xff, 
-			 packet.optString("payload", ""), packet.optString("commandResponse", null));
-    }
-
-    public AX25Packet(String source, String destination, String payload)
-    {
-        this(destination, source, new String[] {}, AX25Packet.AX25_CONTROL_APRS, AX25Packet.AX25_PROTOCOL_NO_LAYER_3, payload, null);
+        JSONObject packet = new JSONObject();
+		packet.put("source", source);
+		packet.put("destination", destination);
+		packet.put("payload", payload);
+		return new AX25Packet(packet);
     }
 	
-	public AX25Packet(String destination,
-			          String source,
-			          String[] path,
-			          int      control,
-			          int      protocol,
-			          String   payload, String commandResponse) 
+	public AX25Packet(JSONObject packet) 
     {
 		this.direction = null;
-		this.timestamp = new Date(System.currentTimeMillis());
-		this.payload = payload;
-		this.path = path;
-		this.control = control;
-		this.protocol = protocol;
-		this.commandResponse = commandResponse;
-		if (source != null)
+		this.timestamp = new Date(packet.optLong("timestamp", System.currentTimeMillis()));
+		this.payload =  packet.optString("payload", "");
+		this.path = new String[] {};
+		if (packet.has("path"))
 		{
-			if (source.length() == 0)
-				this.source = "NOCALL";
-			else
-				this.source = source.toUpperCase();
-		} else {
-			this.source = "NOCALL";
+			List<Object> pathList = packet.getJSONArray("path").toList();
+			this.path = pathList.toArray(new String[pathList.size()]);
 		}
-		
-		if (destination != null)
-		{
-			if (destination.length() == 0)
-				this.destination = "NOCALL";
-			else
-				this.destination = destination.toUpperCase();
-		} else {
-			this.destination = "NOCALL";
-		}
+		this.control = packet.optJSONArray("control");
+		if (this.control == null)
+			this.control = decodeControl(null, AX25Packet.AX25_CONTROL_UI);
+		this.protocol = packet.optInt("protocol", AX25Packet.AX25_PROTOCOL_NO_LAYER_3) & 0xff;
+		this.commandResponse = packet.optString("commandResponse", null);
+		this.source = packet.optString("source", "NOCALL").toUpperCase();
+		this.destination = packet.optString("destination", "NOCALL").toUpperCase();
 	}
 
-	public int getControl()
+	public JSONArray getControl()
 	{
 		return this.control;
+	}
+
+	public boolean controlContains(String key)
+	{
+		return JSONArrayContains(this.control, key);
 	}
 	
 	public Date getTimestamp()
@@ -319,6 +323,32 @@ public class AX25Packet
     {
 		return this.payload;
     }
+
+	public int getReceiveModulus()
+	{
+		ArrayList<String> RCV = new ArrayList<String>(Arrays.asList(new String[] {"R0","R1","R2","R3","R4","R5","R6","R7"}));
+		for (int i = 0; i < this.control.length(); i++)
+        {
+            String item = this.control.optString(i, "");
+			int rcvIndex = RCV.indexOf(item);
+			if (rcvIndex >= 0)
+				return rcvIndex;
+		}
+		return -1;
+	}
+
+	public int getSendModulus()
+	{
+		ArrayList<String> SND = new ArrayList<String>(Arrays.asList(new String[] {"S0","S1","S2","S3","S4","S5","S6","S7"}));
+		for (int i = 0; i < this.control.length(); i++)
+        {
+            String item = this.control.optString(i, "");
+			int sndIndex = SND.indexOf(item);
+			if (sndIndex >= 0)
+				return sndIndex;
+		}
+		return -1;
+	}
 
 	public void updatePayloadVar(String varName, long value)
 	{
@@ -359,7 +389,53 @@ public class AX25Packet
 		return new String(call);
 	}
 
-	private static JSONArray decodeControl(String cr, int controlNumber)
+	public static int encodeControl(JSONArray array)
+	{
+		ArrayList<String> RCV = new ArrayList<String>(Arrays.asList(new String[] {"R0","R1","R2","R3","R4","R5","R6","R7"}));
+		ArrayList<String> SND = new ArrayList<String>(Arrays.asList(new String[] {"S0","S1","S2","S3","S4","S5","S6","S7"}));
+		int control = 0;
+		for (int i = 0; i < array.length(); i++)
+        {
+            String item = array.optString(i, "");
+            if (item.equals("SABME"))
+			{
+				control = AX25_CONTROL_SABME;
+			} else if (item.equals("SABM")) {
+				control = AX25_CONTROL_SABM;
+			} else if (item.equals("DISC")) {
+				control = AX25_CONTROL_DISC;
+			} else if (item.equals("UA")) {
+				control = AX25_CONTROL_UA;
+			} else if (item.equals("UI")) {
+				control = AX25_CONTROL_UI;
+			} else if (item.equals("RR")) {
+				control = 0b00000001;
+			} else if (item.equals("RNR")) {
+				control = 0b00000101;
+			} else if (item.equals("REJ")) {
+				control = 0b00001001;
+			} else if (item.equals("SREJ")) {
+				control = 0b00001101;
+			} else if (item.equals("I")) {
+				//control = 0b00000000;
+				control = 0b00010000;
+			} else {
+				int sndIndex = SND.indexOf(item);
+				int rcvIndex = RCV.indexOf(item);
+				if (rcvIndex >= 0)
+				{
+					control = ((rcvIndex & 0b111) << 5) | control;
+				}
+				if (sndIndex >= 0)
+				{
+					control = ((sndIndex & 0b111) << 1) | control;
+				}
+			}
+        }
+		return control;
+	}
+
+	public static JSONArray decodeControl(String cr, int controlNumber)
 	{
 		JSONArray ra = new JSONArray();
 		if ((controlNumber & 0b11) == 0b01) // supervisory
@@ -369,47 +445,73 @@ public class AX25Packet
 			{
 				ra.put("RR");
 				int filtered_b = controlNumber & 0b11100000;
-				ra.put("#" + String.valueOf((filtered_b >> 5) & 0b111 ));
+				ra.put("R" + String.valueOf((filtered_b >> 5) & 0b111 ));
 			}
 			if (filtered == 0b0101)
 			{
 				ra.put("RNR");
+				int filtered_b = controlNumber & 0b11100000;
+				ra.put("R" + String.valueOf((filtered_b >> 5) & 0b111 ));
 			}
 			if (filtered == 0b1001)
 			{
 				ra.put("REJ");
+				int filtered_b = controlNumber & 0b11100000;
+				ra.put("R" + String.valueOf((filtered_b >> 5) & 0b111 ));
 			}
 			if (filtered == 0b1101)
 			{
 				ra.put("SREJ");
+				int filtered_b = controlNumber & 0b11100000;
+				ra.put("R" + String.valueOf((filtered_b >> 5) & 0b111 ));
+			}
+			int pollFinal = (controlNumber & 0b00010000) >> 4;
+			if (pollFinal == 1)
+			{
+				ra.put("F");
+			} else {
+				ra.put("P");
 			}
 		} else if ((controlNumber & 0b11) == 0b11) {
 			int filtered = controlNumber & 0b11111111;
-			if (filtered == 0b01111111)
+			if (filtered == AX25_CONTROL_SABME)
 			{
 				ra.put("SABME");
+				ra.put("P");
 			}
-			if (filtered == 0b00111111)
+			if (filtered == AX25_CONTROL_SABM)
 			{
 				ra.put("SABM");
+				ra.put("P");
 			}
-			if (filtered == 0b01010011)
+			if (filtered == AX25_CONTROL_DISC)
 			{
 				ra.put("DISC");
+				ra.put("P");
 			}
-			if (filtered == 0b01100011)
+			if (filtered == AX25_CONTROL_UA)
 			{
 				ra.put("UA");
+				ra.put("F");
 			}
-			if (filtered == 0b00000011)
+			if (filtered == AX25_CONTROL_UI)
 			{
 				ra.put("UI");
 			}
-			
 		} else if ((controlNumber & 0b1) == 0b0) { // I frames
-			int filtered = controlNumber & 0b11111111;
 			ra.put("I");
-			ra.put("#" + String.valueOf( (filtered >> 5) & 0b111 ));
+			int pollFinal = (controlNumber & 0b00010000) >> 4;
+			if (pollFinal == 1)
+			{
+				ra.put("P");
+			} else {
+				ra.put("F");
+			}
+			int filtered = controlNumber &   0b00001110;
+			ra.put("S" + String.valueOf( (filtered >> 1) & 0b111 ));
+
+			int filtered_b = controlNumber & 0b11100000;
+			ra.put("R" + String.valueOf((filtered_b >> 5) & 0b111 ));
 		}
 		if (cr != null)
 		{
@@ -493,12 +595,7 @@ public class AX25Packet
 			if (payload.length() > 0)
 				ro.put("payload", this.getPayload());
 		}
-		if (this.commandResponse != null)
-		{
-			ro.put("commandResponse", this.commandResponse);
-		}
-		ro.put("control", this.control & 0xff);
-		ro.put("controlDecoded", decodeControl(this.commandResponse, this.control));
+		ro.put("control", this.control);
 		if (this.protocol > 0)
 			ro.put("protocol", this.protocol & 0xff);
 		if (this.direction != null)
@@ -515,6 +612,18 @@ public class AX25Packet
 		ro.put("timestamp", this.timestamp.getTime());
 		return ro;
 	}
+
+	public static boolean JSONArrayContains(JSONArray a, String needle)
+    {
+        for (int i = 0; i < a.length(); i++)
+        {
+            if (needle.equals(a.optString(i, null)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
 	public String toLogString()
 	{
