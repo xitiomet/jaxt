@@ -1,6 +1,8 @@
 package org.openstatic.kiss;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -8,17 +10,33 @@ import org.json.JSONObject;
 public class TerminalLink implements AX25PacketListener
 {
     private KISSClient kClient;
-    private int txCount;
-    private int rxCount;
     private String callsign;
+    private HashMap<String, TerminalLinkSession> sessions;
+    private ArrayList<TerminalLinkListener> listeners;
 
     public TerminalLink(KISSClient kClient, String callsign)
     {
+        this.sessions = new HashMap<String, TerminalLinkSession>();
+        this.listeners = new ArrayList<TerminalLinkListener>();
         this.kClient = kClient;
         this.callsign = callsign;
-        this.txCount = 0;
-        this.rxCount = 0;
         this.kClient.addAX25PacketListener(this);
+    }
+    
+    public void addTerminalLinkListener(TerminalLinkListener listener)
+    {
+        if (!this.listeners.contains(listener))
+            this.listeners.add(listener);
+    }
+
+    public KISSClient getKISSClient()
+    {
+        return this.kClient;
+    }
+
+    public String getCallsign()
+    {
+        return this.callsign;
     }
 
     @Override
@@ -30,35 +48,7 @@ public class TerminalLink implements AX25PacketListener
     public void onKISSDisconnect(InetSocketAddress socketAddress) {
 
     }
-
-    private void processText(String source, String txt)
-    {
-        String rtxt = "I dont know what \"" + txt.trim() + "\" means!!\n";      
-        try
-        {  
-            this.kClient.send(buildIFrame(source, rtxt));
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
-        }
-    }
-
-    private AX25Packet buildIFrame(String target, String text)
-    {
-        JSONObject jPacket = new JSONObject();
-        jPacket.put("source", this.callsign);
-        jPacket.put("destination", target);
-        jPacket.put("payload", text);
-        JSONArray cArray = new JSONArray();
-        cArray.put("I");
-        cArray.put("R" + String.valueOf(this.rxCount));
-        cArray.put("S" + String.valueOf(this.txCount));
-        cArray.put("C");
-        jPacket.put("control", cArray);
-        AX25Packet packet = new AX25Packet(jPacket);
-        txCount++;
-        if (txCount >= 8) txCount = 0;
-        return packet;
-    }
+    
 
     @Override
     public void onReceived(AX25Packet packet)
@@ -73,27 +63,30 @@ public class TerminalLink implements AX25PacketListener
                     respCtrl.put("UA");
                     AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
                     this.kClient.send(pr);
-                    this.txCount = 0;
-                    this.rxCount = 0;
+                    TerminalLinkSession session = new TerminalLinkSession(this, packet.getSourceCallsign());
+                    this.sessions.put(packet.getSourceCallsign(), session);
+                    this.listeners.forEach((l) -> l.onTerminalLinkSession(session));
                 }
-                if (packet.controlContains("I"))
+                if (packet.controlContains("DISC"))
                 {
-                    this.rxCount = packet.getSendModulus()+1;
-                    // increment by one and respond letting remote host know you received it
-                    JSONArray respCtrl = new JSONArray();
-                    respCtrl.put("RR");
-                    respCtrl.put("R" + String.valueOf(this.rxCount));
-                    AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
-                    this.kClient.send(pr);
-                    processText(packet.getSourceCallsign(), packet.getPayload());
+                    TerminalLinkSession session = this.sessions.get(packet.getSourceCallsign());
+                    if (session != null)
+                    {
+                        JSONArray respCtrl = new JSONArray();
+                        respCtrl.put("UA");
+                        AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
+                        this.kClient.send(pr);
+                        this.sessions.remove(packet.getSourceCallsign());
+                        session.handleDisconnect();
+                    }
                 }
-                if (packet.controlContains("RR") && packet.controlContains("C"))
+                if (packet.controlContains("I") || packet.controlContains("RR") || packet.controlContains("UA"))
                 {
-                    JSONArray respCtrl = new JSONArray();
-                    respCtrl.put("RR");
-                    respCtrl.put("R" + String.valueOf(this.rxCount));
-                    AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
-                    this.kClient.send(pr);
+                    TerminalLinkSession session = this.sessions.get(packet.getSourceCallsign());
+                    if (session != null)
+                    {
+                        session.handleFrame(packet);                        
+                    }
                 }
             } catch (Exception tex) {
                 tex.printStackTrace(System.err);

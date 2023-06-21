@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
@@ -181,7 +182,17 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             JavaKISSMain jkm = new JavaKISSMain(kClient);
             saveSettings();
             TerminalLink tl = new TerminalLink(kClient, "BLOOP");
-            //testControlCoding();
+            tl.addTerminalLinkListener(new TerminalLinkListener() {
+
+                @Override
+                public void onTerminalLinkSession(final TerminalLinkSession session) 
+                {
+                    ProcessBuilder prb = new ProcessBuilder("cmd.exe", "/Q");                        
+                    session.setHandler(new ProcessTerminalLinkSessionHandler(prb));   
+                }
+                
+            });
+
             Runtime.getRuntime().addShutdownHook(new Thread() 
             { 
                 public void run() 

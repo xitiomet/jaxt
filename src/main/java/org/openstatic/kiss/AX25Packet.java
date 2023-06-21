@@ -38,6 +38,8 @@ public class AX25Packet
 	public static final int AX25_CONTROL_SABME             = 0b01111111;
 	public static final int AX25_CONTROL_UA                = 0b01100011;
 
+	public static final int AX25_CONTROL_DM                = 0b00001111;
+	public static final int AX25_CONTROL_FRMR              = 0b10000111;
 
 	public static final int AX25_PROTOCOL_COMPRESSED_TCPIP   = 0x06;
 	public static final int AX25_PROTOCOL_UNCOMPRESSED_TCPIP = 0x07;
@@ -406,19 +408,38 @@ public class AX25Packet
 				control = AX25_CONTROL_DISC;
 			} else if (item.equals("UA")) {
 				control = AX25_CONTROL_UA;
+			} else if (item.equals("DM")) {
+				control = AX25_CONTROL_DM;
+			} else if (item.equals("FRMR")) {
+				control = AX25_CONTROL_FRMR;
 			} else if (item.equals("UI")) {
 				control = AX25_CONTROL_UI;
 			} else if (item.equals("RR")) {
-				control = 0b00000001;
+				if (JSONArrayContains(array, "P"))
+					control = 0b00010001;
+				else 
+					control = 0b00000001;
 			} else if (item.equals("RNR")) {
-				control = 0b00000101;
+				if (JSONArrayContains(array, "P"))
+					control = 0b00010101;
+				else
+					control = 0b00000101;
 			} else if (item.equals("REJ")) {
-				control = 0b00001001;
+				if (JSONArrayContains(array, "P"))
+					control = 0b00011001;
+				else
+					control = 0b00001001;
 			} else if (item.equals("SREJ")) {
-				control = 0b00001101;
+				if (JSONArrayContains(array, "P"))
+					control = 0b00011101;
+				else
+					control = 0b00001101;
 			} else if (item.equals("I")) {
 				//control = 0b00000000;
-				control = 0b00010000;
+				if (JSONArrayContains(array, "F"))
+					control = 0b00000000;
+				else
+					control = 0b00010000;
 			} else {
 				int sndIndex = SND.indexOf(item);
 				int rcvIndex = RCV.indexOf(item);
@@ -468,9 +489,9 @@ public class AX25Packet
 			int pollFinal = (controlNumber & 0b00010000) >> 4;
 			if (pollFinal == 1)
 			{
-				ra.put("F");
-			} else {
 				ra.put("P");
+			} else {
+				ra.put("F");
 			}
 		} else if ((controlNumber & 0b11) == 0b11) {
 			int filtered = controlNumber & 0b11111111;
@@ -488,6 +509,16 @@ public class AX25Packet
 			{
 				ra.put("DISC");
 				ra.put("P");
+			}
+			if (filtered == AX25_CONTROL_DM)
+			{
+				ra.put("DM");
+				ra.put("F");
+			}
+			if (filtered == AX25_CONTROL_FRMR)
+			{
+				ra.put("FRMR");
+				ra.put("F");
 			}
 			if (filtered == AX25_CONTROL_UA)
 			{
