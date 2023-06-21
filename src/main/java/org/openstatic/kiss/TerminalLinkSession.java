@@ -16,6 +16,7 @@ public class TerminalLinkSession implements Runnable
     private LinkedBlockingQueue<String> outboundQueue;
     private boolean remoteReceiveReady;
     private long notReadyAt;
+    private long lastRxAt;
     private Thread monitorThread;
     private boolean connected;
 
@@ -31,6 +32,7 @@ public class TerminalLinkSession implements Runnable
         this.monitorThread = new Thread(this);
         this.monitorThread.start();
         this.notReadyAt = 0;
+        this.lastRxAt = System.currentTimeMillis();
     }
 
     public void setHandler(TerminalLinkSessionHandler handler)
@@ -88,10 +90,13 @@ public class TerminalLinkSession implements Runnable
 
     protected void handleDisconnect()
     {
-        if (this.handler != null)
-            this.handler.onDisconnect(this);
-        this.link = null;
-        this.connected = false;
+        if (this.connected)
+        {
+            if (this.handler != null)
+                this.handler.onDisconnect(this);
+            this.link = null;
+            this.connected = false;
+        }
     }
 
     private static ArrayList<String> splitString(String str) 
@@ -112,6 +117,7 @@ public class TerminalLinkSession implements Runnable
 
     protected void handleFrame(AX25Packet packet)
     {
+        this.lastRxAt = System.currentTimeMillis();
         if (packet.controlContains("I"))
         {
             if (this.handler != null)
@@ -168,11 +174,25 @@ public class TerminalLinkSession implements Runnable
                         jPacket.put("control", cArray);
                         AX25Packet packet = new AX25Packet(jPacket);
                         this.link.getKISSClient().send(packet);
+                        this.notReadyAt = System.currentTimeMillis();
                     }
+                }
+                if ((now - this.lastRxAt) > 500000)
+                {
+                    JSONObject jPacket = new JSONObject();
+                    jPacket.put("source", this.link.getCallsign());
+                    jPacket.put("destination", this.callsign);
+                    JSONArray cArray = new JSONArray();
+                    cArray.put("DISC");
+                    cArray.put("C");
+                    jPacket.put("control", cArray);
+                    AX25Packet packet = new AX25Packet(jPacket);
+                    this.link.getKISSClient().send(packet);
+                    this.handleDisconnect();
                 }
                 Thread.sleep(1000);
             } catch (Exception e) {
-
+                e.printStackTrace(System.err);
             }
         }
     }

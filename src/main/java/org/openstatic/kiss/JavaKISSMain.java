@@ -15,9 +15,13 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
+
+import javax.swing.plaf.TextUI;
 
 import org.apache.commons.cli.*;
 import org.eclipse.jetty.util.ajax.JSON;
@@ -80,6 +84,9 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         Option testOption = new Option("t", "test", true, "Send test packets (optional parameter interval in seconds, default is 10 seconds)");
         testOption.setOptionalArg(true);
         options.addOption(testOption);
+        Option linkOption = new Option("z", "terminal-link", true, "Listen for a terminal call, first argument is callsign, and second is command with parameters seperated by commas (Example: -z MYCALL-1 cmd.exe,/Q)");
+        linkOption.setArgs(2);
+        options.addOption(linkOption);
         options.addOption(new Option("h", "host", true, "Specify TNC host (Default: 127.0.0.1)"));
         options.addOption(new Option("p", "port", true, "KISS Port (Default: 8100)"));
         Option apiOption = new Option("a", "api", true, "Enable API Web Server, and specify port (Default: 8101)");
@@ -155,6 +162,17 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 settings.put("source", cmd.getOptionValue("s").toUpperCase());
             }
             
+            if (cmd.hasOption("z"))
+            {
+                JSONObject terminal = settings.optJSONObject("terminal", new JSONObject());
+                String[] values = cmd.getOptionValues("z");
+                JSONObject xarg = new JSONObject();
+                xarg.put("type", "process");
+                xarg.put("command", new JSONArray(values[1].split(Pattern.quote(","))));
+                terminal.put(values[0], xarg);
+                settings.put("terminal", terminal);
+            }
+
             if (cmd.hasOption("d"))
             {
                 settings.put("destination", cmd.getOptionValue("d").toUpperCase());
@@ -181,17 +199,37 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             kClient.setTxDisabled(settings.optBoolean("txDisabled", false));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
             saveSettings();
-            TerminalLink tl = new TerminalLink(kClient, "BLOOP");
-            tl.addTerminalLinkListener(new TerminalLinkListener() {
-
-                @Override
-                public void onTerminalLinkSession(final TerminalLinkSession session) 
+            if (settings.has("terminal"))
+            {
+                JSONObject terminalSetup = settings.optJSONObject("terminal", new JSONObject());
+                Set<String> keys = terminalSetup.keySet();
+                for(String key : keys)
                 {
-                    ProcessBuilder prb = new ProcessBuilder("cmd.exe", "/Q");                        
-                    session.setHandler(new ProcessTerminalLinkSessionHandler(prb));   
-                }
+                    final JSONObject tSetup = terminalSetup.optJSONObject(key, new JSONObject());
+                    TerminalLink tl = new TerminalLink(kClient, key);
+                    tl.addTerminalLinkListener(new TerminalLinkListener() {
+
+                        @Override
+                        public void onTerminalLinkSession(final TerminalLinkSession session) 
+                        {
+                            if (tSetup.optString("type","").equals("process"))
+                            {
+                                JSONArray command = tSetup.optJSONArray("command");
+                                ArrayList<String> commandArray = new ArrayList<String>();
+                                for(int i = 0; i < command.length(); i++)
+                                {
+                                    commandArray.add(command.getString(i));
+                                }
+                                ProcessBuilder prb = new ProcessBuilder(commandArray.toArray(new String[commandArray.size()]));                        
+                                session.setHandler(new ProcessTerminalLinkSessionHandler(prb));
+                            }
+                        }
                 
-            });
+                    });
+                    JavaKISSMain.logAppend("main.log", "[TERMINAL @" + key + "] " + tSetup.toString());
+                }
+            }
+            
 
             Runtime.getRuntime().addShutdownHook(new Thread() 
             { 
@@ -205,30 +243,6 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             //e.printStackTrace(System.err);
             System.err.println(e.getLocalizedMessage());
         }
-    }
-
-    public static void testControlCoding()
-    {
-        JSONArray t1 = new JSONArray();
-        t1.put("I");
-        t1.put("S2");
-        t1.put("R3");
-        int control = AX25Packet.encodeControl(t1);
-
-        JSONArray t1r = AX25Packet.decodeControl(null, control);
-        System.err.println("TEST1");
-        System.err.println(t1.toString());
-        System.err.println(t1r.toString());
-
-        JSONArray t2 = new JSONArray();
-        t2.put("RR");
-        t2.put("R3");
-        int control2 = AX25Packet.encodeControl(t2);
-
-        JSONArray t2r = AX25Packet.decodeControl(null, control2);
-        System.err.println("TEST2");
-        System.err.println(t2.toString());
-        System.err.println(t2r.toString());
     }
 
     public static void showHelp(Options options)

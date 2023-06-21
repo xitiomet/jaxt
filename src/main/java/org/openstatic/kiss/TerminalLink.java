@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 public class TerminalLink implements AX25PacketListener
 {
