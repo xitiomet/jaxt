@@ -658,6 +658,18 @@ public class AX25Packet
 
 	public String toLogString()
 	{
-		return this.getSourceCallsign() + " > " + this.getDestinationCallsign() + ": " + this.getPayload();
+		StringBuffer sb = new StringBuffer();
+		sb.append(this.getSourceCallsign() + " > " + this.getDestinationCallsign());
+		String plStr = this.getPayload();
+		sb.append(" [");
+		for (int i = 0; i < this.control.length(); i++)
+		{
+			sb.append(" ");
+			sb.append(this.control.get(i));
+		}
+		sb.append(" ] ");
+		if (plStr.length() > 0)
+			sb.append(plStr.replaceAll(Pattern.quote("\r"), "<CR>").replaceAll(Pattern.quote("\n"), "<LF>"));
+		return sb.toString();
 	}
 }

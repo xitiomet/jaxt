@@ -62,11 +62,17 @@
   "bundles":[
     {
       "name":"javax.servlet.LocalStrings",
-      "locales":["und"]
+      "locales":[
+        "", 
+        "und"
+      ]
     }, 
     {
       "name":"javax.servlet.http.LocalStrings",
-      "locales":["und"]
+      "locales":[
+        "", 
+        "und"
+      ]
     }
   ]
 }
