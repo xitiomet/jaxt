@@ -1,6 +1,6 @@
-## Java AX.25 Tool
+## JAXT - An AX.25 Tool
 
-A Java AX.25 Command line tool / Web Interface and Java library
+A AX.25 Command line tool, Web Interface and Java library
 
 This program was created because i wanted a reliable way to interface modern web programs using Websockets,
 JSON, and HTTP with AX.25 packet radio over KISS. This program can translate AX.25 frames to JSON objects and back again without any information lost. It can be configured to perform an HTTP POST on the receipt of a packet, and transmission can be initiated from an HTTP api call.
