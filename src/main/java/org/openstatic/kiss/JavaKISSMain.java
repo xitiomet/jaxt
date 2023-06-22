@@ -166,7 +166,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 JSONObject xarg = new JSONObject();
                 xarg.put("type", "process");
                 xarg.put("command", new JSONArray(values[1].split(Pattern.quote(","))));
-                terminal.put(values[0], xarg);
+                terminal.put(values[0].toUpperCase(), xarg);
                 settings.put("terminal", terminal);
             }
 
