@@ -81,7 +81,7 @@ public class TerminalLink implements AX25PacketListener
                         session.handleDisconnect();
                     }
                 }
-                if (packet.controlContains("I") || packet.controlContains("RR") || packet.controlContains("UA"))
+                if (packet.controlContains("I") || packet.controlContains("RR") || packet.controlContains("UA") || packet.controlContains("REJ") || packet.controlContains("SREJ"))
                 {
                     TerminalLinkSession session = this.sessions.get(packet.getSourceCallsign());
                     if (session != null)

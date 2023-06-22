@@ -15,9 +15,8 @@ public class TerminalLinkSession implements Runnable
     private TerminalLinkSessionHandler handler;
     private LinkedBlockingQueue<String> outboundQueue;
     private boolean remoteReceiveReady;
-    private long notReadyAt;
-    private long lastRxAt;
-    private long lastTxAt;
+    private long lastRxAt; // last time we received a packet
+    private long lastTxAt; // last time we sent a packet
     private Thread monitorThread;
     private boolean connected;
     private AX25Packet[] pendingPacket;
@@ -31,7 +30,6 @@ public class TerminalLinkSession implements Runnable
         this.remoteReceiveReady = true;
         this.connected = true;
         this.outboundQueue = new LinkedBlockingQueue<String>();
-        this.notReadyAt = 0;
         this.pendingPacket = new AX25Packet[8];
         this.lastRxAt = System.currentTimeMillis();
         this.monitorThread = new Thread(this);
@@ -63,7 +61,6 @@ public class TerminalLinkSession implements Runnable
         if (this.outboundQueue.size() > 0)
         {
             String dataOut = this.outboundQueue.poll();
-            //System.err.println("send from queue: " + dataOut);
             sendIFrame(dataOut);
         }
     }
@@ -84,10 +81,9 @@ public class TerminalLinkSession implements Runnable
         try
         {
             this.remoteReceiveReady = false;
-            this.notReadyAt = System.currentTimeMillis();
-            this.link.getKISSClient().send(packet);
             this.lastTxAt = System.currentTimeMillis();
             this.pendingPacket[packet.getSendModulus()] = packet;
+            this.link.getKISSClient().send(packet);
         } catch (Exception e) {}
     }
 
@@ -180,6 +176,29 @@ public class TerminalLinkSession implements Runnable
                 sendFromQueue();
             }
         }
+
+        if (packet.controlContains("REJ") && packet.controlContains("R"))
+        {
+            int nextTxMod = ((this.txModulus + 1) % 8);
+            // They are rejecting because we need to move on to the next packet treat this like an RR
+            if (nextTxMod == packet.getReceiveModulus())
+            {
+                this.txModulus = packet.getReceiveModulus();
+                this.pendingPacket[this.txModulus] = null;
+                this.remoteReceiveReady = true;
+                sendFromQueue();
+            }
+        }
+    }
+
+    public long lastTxAge()
+    {
+        return System.currentTimeMillis() - this.lastTxAt;
+    }
+
+    public long lastRxAge()
+    {
+        return System.currentTimeMillis() - this.lastRxAt;
     }
 
     @Override
@@ -190,32 +209,23 @@ public class TerminalLinkSession implements Runnable
             long now = System.currentTimeMillis();
             try
             {
+                // We are waiting for the remote side to give us a RR
                 if (!this.remoteReceiveReady)
                 {
+                    // We sent something, maybe they didnt get it?
                     if (this.pendingPacket[this.txModulus] != null)
                     {
-                        if ((now - this.lastTxAt) > 10000)
+                        // ok it was sent 10 seconds ago, lets try again
+                        if (this.lastTxAge() > 10000)
                         {
                             this.link.getKISSClient().send(this.pendingPacket[this.txModulus]);
                             this.lastTxAt = now;
                         }
-                    } else if (now - this.notReadyAt > 10000) {  // if its been longer then 10 seconds without a RR response, try again
-                        JSONObject jPacket = new JSONObject();
-                        jPacket.put("source", this.link.getCallsign());
-                        jPacket.put("destination", this.callsign);
-                        JSONArray cArray = new JSONArray();
-                        cArray.put("RR");
-                        cArray.put("R" + String.valueOf(this.rxModulus));
-                        cArray.put("C");
-                        jPacket.put("control", cArray);
-                        AX25Packet packet = new AX25Packet(jPacket);
-                        this.link.getKISSClient().send(packet);
-                        this.notReadyAt = System.currentTimeMillis();
                     }
                 }
 
                 // If this connection goes quiet for 5 minutes, there is a good chance its dead, lets kill it
-                if ((now - this.lastRxAt) > 300000)
+                if (this.lastRxAge() > 300000)
                 {
                     JSONObject jPacket = new JSONObject();
                     jPacket.put("source", this.link.getCallsign());
@@ -228,14 +238,12 @@ public class TerminalLinkSession implements Runnable
                     this.link.getKISSClient().send(packet);
                     this.handleDisconnect();
                 }
-            } catch (Exception rxx) {
-                rxx.printStackTrace(System.err);
-            }
+            } catch (Exception rxx) {}
             try
             {
+                // sleep for a second
                 Thread.sleep(1000);
-            } catch (Exception e) {
-            }
+            } catch (Exception e) {}
         }
     }
 }
