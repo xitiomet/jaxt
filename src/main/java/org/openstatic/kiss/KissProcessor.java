@@ -139,7 +139,8 @@ public class KissProcessor
 
     public void sendKissByte(byte b) 
     {
-        _outputKissBuffer[_outputKissBufferPos++] = b;
+        if (_outputKissBufferPos < _outputKissBuffer.length)
+            _outputKissBuffer[_outputKissBufferPos++] = b;
     }
 
     private void receiveFrameByte(byte b) 

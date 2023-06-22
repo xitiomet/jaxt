@@ -659,17 +659,45 @@ public class AX25Packet
 	public String toLogString()
 	{
 		StringBuffer sb = new StringBuffer();
-		sb.append(this.getSourceCallsign() + " > " + this.getDestinationCallsign());
+		sb.append(createSizedString(this.getSourceCallsign(),9) + " > " + createSizedString(this.getDestinationCallsign(),9));
 		String plStr = this.getPayload();
-		sb.append(" [");
+		sb.append(" [ ");
+		StringBuffer sb2 = new StringBuffer();
 		for (int i = 0; i < this.control.length(); i++)
 		{
-			sb.append(" ");
-			sb.append(this.control.get(i));
+			sb2.append(this.control.get(i));
+			sb2.append(" ");
 		}
-		sb.append(" ] ");
+		sb.append(createSizedString(sb2.toString(), 14));
+		sb.append("] ");
 		if (plStr.length() > 0)
 			sb.append(plStr.replaceAll(Pattern.quote("\r"), "<CR>").replaceAll(Pattern.quote("\n"), "<LF>"));
 		return sb.toString();
 	}
+
+	public static String getPaddingSpace(int value)
+    {
+        StringBuffer x = new StringBuffer("");
+        for (int n = 0; n < value; n++)
+        {
+            x.append(" ");
+        }
+        return x.toString();
+    }
+
+    public static String createSizedString(String value, int size)
+    {
+        if (value == null)
+        {
+            return getPaddingSpace(size);
+        } else if (value.length() == size) {
+            return value;
+        } else if (value.length() > size) {
+            return value.substring(0, size);
+        } else if (value.length() < size) {
+            return value + getPaddingSpace(size - value.length());
+        } else {
+            return null;
+        }
+    }
 }

@@ -15,22 +15,26 @@ NOTE: Connect to the KISS port and IP of your TNC. Does not work with AGWPE
 ```bash
 usage: jaxt
 Java AX25 Tool: A Java KISS TNC Client implementation
- -?,--help                Shows help
- -a,--api <arg>           Enable API Web Server, and specify port
-                          (Default: 8101)
- -d,--destination <arg>   Destination callsign (test payload)
- -f,--config-file <arg>   Specify config file (.json)
- -h,--host <arg>          Specify TNC host (Default: 127.0.0.1)
- -l,--logs <arg>          Enable Logging, and optionally specify a
-                          directory
- -m,--payload <arg>       Payload string to send on test interval. {{ts}}
-                          for timestamp, {{seq}} for sequence.
- -p,--port <arg>          KISS Port (Default: 8100)
- -s,--source <arg>        Source callsign (test payload)
- -t,--test <arg>          Send test packets (optional parameter interval
-                          in seconds, default is 10 seconds)
- -v,--verbose             Shows Packets
- -x,--post <arg>          HTTP POST packets received as JSON to url
+ -?,--help                  Shows help
+ -a,--api <arg>             Enable API Web Server, and specify port
+                            (Default: 8101)
+ -d,--destination <arg>     Destination callsign (test payload)
+ -f,--config-file <arg>     Specify config file (.json)
+ -h,--host <arg>            Specify TNC host (Default: 127.0.0.1)
+ -l,--logs <arg>            Enable Logging, and optionally specify a
+                            directory
+ -m,--payload <arg>         Payload string to send on test interval.
+                            {{ts}} for timestamp, {{seq}} for sequence.
+ -p,--port <arg>            KISS Port (Default: 8100)
+ -s,--source <arg>          Source callsign (test payload)
+ -t,--test <arg>            Send test packets (optional parameter interval
+                            in seconds, default is 10 seconds)
+ -v,--verbose               Shows Packets
+ -x,--post <arg>            HTTP POST packets received as JSON to url
+ -z,--terminal-link <arg>   Listen for a terminal call, first argument is
+                            callsign, and second is command with
+                            parameters seperated by commas (Example: -z
+                            MYCALL-1 cmd.exe,/Q)
  ```
 
  If you wish to avoid a lot of command line arguments, the config file format looks like this save as .json:
@@ -49,7 +53,23 @@ Java AX25 Tool: A Java KISS TNC Client implementation
     "logPath": "./jaxt-logs/",
     "apiPort": 8101,
     "apiPassword": "locked-down-password1234",
-    "txDisabled": false
+    "txDisabled": false,
+    "terminal": {
+        "CMD-1": {
+            "type": "process",
+            "command": [
+                "cmd.exe",
+                "/Q"
+            ]
+        },
+        "BASH-1": {
+            "type": "process",
+            "command": [
+                "/bin/bash",
+                "--login"
+            ]
+        }
+    }
 }
  ```
  If you would like automatic persistent settings, save your config file as ".jaxt.json" in your home directory. JAXT will look for this file when no config file is specified. Or use the command line option "-f ~/.jaxt.json" to create this file automatically with the settings from the command line.
@@ -79,7 +99,7 @@ Content-Type: application/json
     "destination": "NOCALL-2",
     "timestamp": 1686600213326,
     "payload": "This is a transmission",
-    "control": 3,
+    "control": ["UI","C"],
     "protocol": 240,
     "direction": "rx",
     "path": ["WIDE1-1"]
@@ -89,7 +109,7 @@ Content-Type: application/json
 * "destination" - destination callsign of packet with SSID specified as -1
 * "timestamp" - timestamp at which JAXT received the packet
 * "payload" - body of the packet as a string
-* "control" - control field as an unsigned integer.
+* "control" - control field as an array of control states. UI, SABM, DISC, I ... C, R ... P, F ... R0, S0
 * "protocol" - protocol field as an unsigned integer
 * "direction" - "rx" or "tx" did jaxt receive or transmit this packet
 * "path" - callsign path for digipeters.

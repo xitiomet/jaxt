@@ -122,7 +122,7 @@ function setupWebsocket()
                 } else if (action == 'kissDisconnected') {
                     updateKCS(false);
                 }
-            } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("payload")) {
+            } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("control")) {
                 logPacket(jsonObject);
             }
         };
@@ -164,13 +164,26 @@ function logIt(message)
     window.scrollTo(0,document.body.scrollHeight);
 }
 
+function cleanPayload(payload)
+{
+    if (payload != undefined)
+        return payload.replaceAll(/</g,'&lt;').replaceAll(/>/g,'&gt;').replaceAll(/\r/g,'&lt;CR&gt;').replaceAll(/\n/g,'&lt;LF&gt;');
+    else
+        return "";
+}
+
 function logPacket(packet)
 {
     var console = document.getElementById('console');
     var d = new Date();
     if (packet.hasOwnProperty('timestamp'))
         d = new Date(packet.timestamp);
-    console.innerHTML +=  "(" + packet.direction.toUpperCase() + " @ " + getDTString(d) + ") [ " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " ] " + packet.payload + "\n";
+    var ctrlStr = "";
+    for(flag of packet.control)
+    {
+        ctrlStr += " " + flag;
+    }
+    console.innerHTML +=  "(" + packet.direction.toUpperCase() + " @ " + getDTString(d) + ") " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " [" + padString(ctrlStr,14) + " ] " + cleanPayload(packet.payload) + "\n";
     window.scrollTo(0,document.body.scrollHeight);
 }
 

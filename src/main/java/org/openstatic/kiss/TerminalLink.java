@@ -58,13 +58,15 @@ public class TerminalLink implements AX25PacketListener
             {
                 if (packet.controlContains("SABM"))
                 {
-                    JSONArray respCtrl = new JSONArray();
-                    respCtrl.put("UA");
-                    AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
-                    this.kClient.send(pr);
-                    TerminalLinkSession session = new TerminalLinkSession(this, packet.getSourceCallsign());
-                    this.sessions.put(packet.getSourceCallsign(), session);
-                    this.listeners.forEach((l) -> l.onTerminalLinkSession(session));
+                    TerminalLinkSession session = this.sessions.get(packet.getSourceCallsign());
+                    if (session == null)
+                    {
+                        session = new TerminalLinkSession(this, packet.getSourceCallsign());
+                        final TerminalLinkSession fSession = session;
+                        this.sessions.put(packet.getSourceCallsign(), session);
+                        this.listeners.forEach((l) -> l.onTerminalLinkSession(fSession));
+                    }
+                    session.handleFrame(packet);
                 }
                 if (packet.controlContains("DISC"))
                 {
