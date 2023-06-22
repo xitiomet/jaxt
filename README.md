@@ -1,12 +1,11 @@
 ## Java AX.25 Tool
 
-A Java AX.25 Command line tool and library
+A Java AX.25 Command line tool / Web Interface and Java library
 
-To compile this project please run:
-```bash
-$ mvn clean package
-```
-from a terminal.
+This program was created because i wanted a reliable way to interface modern web programs using Websockets,
+JSON, and HTTP with AX.25 packet radio over KISS. This program can translate AX.25 frames to JSON objects and back again without any information lost. It can be configured to perform an HTTP POST on the receipt of a packet, and transmission can be initiated from an HTTP api call.
+
+![](https://openstatic.org/projects/jaxt/jaxt-web.png)
 
 This program has been tested with [UZ7HO's Soundmodem](https://uz7.ho.ua/packetradio.htm), [QtSoundmodem](https://www.cantab.net/users/john.wiseman/Documents/QtSoundModem.html) and [DireWolf](https://github.com/wb2osz/direwolf)
 
@@ -74,7 +73,6 @@ Java AX25 Tool: A Java KISS TNC Client implementation
  ```
  If you would like automatic persistent settings, save your config file as ".jaxt.json" in your home directory. JAXT will look for this file when no config file is specified. Or use the command line option "-f ~/.jaxt.json" to create this file automatically with the settings from the command line.
 
-
  ### Logging
 
 In the "logPath" (which defaults to the current directory) you will find "main.log", "exceptions.log", "rx.json" and "tx.json"
@@ -83,7 +81,6 @@ In the "logPath" (which defaults to the current directory) you will find "main.l
 * "exceptions.log" - this log contains advanced debugging info for jaxt.
 * "rx.json" - A Log of all packets received using jaxt, each line represents one json object. Check out [JSON-Roller](https://openstatic.org/projects/json-roller/) for help parsing and filtering this information.
 * "tx.json" - A Log of all packets transmitted using jaxt, each line represents one json object. Check out [JSON-Roller](https://openstatic.org/projects/json-roller/) for help parsing and filtering this information.
-
 
 ### Posting packets
 
@@ -109,30 +106,55 @@ Content-Type: application/json
 * "destination" - destination callsign of packet with SSID specified as -1
 * "timestamp" - timestamp at which JAXT received the packet
 * "payload" - body of the packet as a string
-* "control" - control field as an array of control states. UI, SABM, DISC, I ... C, R ... P, F ... R0, S0
+* "control" - control field as an array of control states. (UI, SABM, DISC, I, REJ, RR, C or R, P or F, R0, S0)
+    * This field usually has the packet type as the first element of the array however the order doesn't matter. Refer to [AX.25 Documentation](https://openstatic.org/projects/jaxt/AX25.2.2.pdf) for more information.
+    * "C" or "R" - Command or response
+    * "P" or "F" - Poll or final
+    * "R0" - Receive Modulo 0-7
+    * "S0" - Send Modulo 0-7
 * "protocol" - protocol field as an unsigned integer
-* "direction" - "rx" or "tx" did jaxt receive or transmit this packet
+* "direction" - "rx" or "tx" did JAXT receive or transmit this packet?
 * "path" - callsign path for digipeters.
 
-### Websocket and HTTP API
+### Websocket API
 
-if you use the -a option you can communicate with jaxt using websockets or http
+if you use the -a option you can communicate with jaxt using Websockets or the HTTP interface (shown above, and explained below this section)
 
 Assuming the api port is set to 8101, You can connect to the server's websocket using:
 
-ws://127.0.0.1:8101/jaxt/
+```bash
+wscat -c ws://127.0.0.1:8101/jaxt/
+```
 
 Once connected you must transmit an object containing {"apiPassword":"xxxxxxx"} before you will receive any packets or be able to transmit. This can even be included as a field in your first packet. 
 
-The format of AX.25 packets is the same as the POST packet format documented above. JSON objects should be sent as a single line.
+The format of AX.25 packets is the same as the POST packet format documented above. JSON objects should be sent as a single line without any CR/LF.
 
-You can also view packets using the simple HTTP interface at:
+### HTTP API paths
+
+You can view and send packets using the simple HTTP interface at:
 
 http://127.0.0.1:8101/
 
-### Other API paths
+NOTE: If you plan to make your JAXT instance internet available, its recommended you use nginx to provide ssl protection on both the websocket and http interface. Otherwise your password will be transmitted in plain text!
+
 
 * /jaxt/api/transmit/ - You can either POST a packet as a JSON object to this path, or by specifying "source", "destination", and "payload" parameters using GET. Both must include "apiPassword" field as well.
 
 * /jaxt/api/settings/ - Retrieve current JAXT settings. Must include "apiPassword" which is excluded from the response for security reasons.
 
+### Terminal hosting
+
+JAXT supports SABM connections using programs like EasyTerm. You can specify any program to be launched
+upon connection and the program's STDIN, STDOUT, and STDERR will be connected to the remote host.
+
+For example if you wanted to make a bash terminal available (not a good idea)
+```bash
+$ jaxt -z MYCALL-4 /bin/bash
+```
+
+Lets say you made a python script for a BBS instead
+```bash
+$ jaxt -z MYCALL-4 /usr/bin/python,/home/me/myscript.py
+```
+NOTE: commas are used to seperate parameters after the command instead of spaces (as they would be treated as arguments for jaxt)

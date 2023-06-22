@@ -17,6 +17,8 @@ public class TerminalLinkSession implements Runnable
     private boolean remoteReceiveReady;
     private long lastRxAt; // last time we received a packet
     private long lastTxAt; // last time we sent a packet
+    private long lastSABMAt;
+    private boolean sabmComplete;
     private Thread monitorThread;
     private boolean connected;
     private AX25Packet[] pendingPacket;
@@ -27,11 +29,14 @@ public class TerminalLinkSession implements Runnable
         this.callsign = callsign;
         this.txModulus = 0;
         this.rxModulus = 0;
-        this.remoteReceiveReady = true;
+        this.sabmComplete = false;
+        this.lastSABMAt = System.currentTimeMillis();
+        this.remoteReceiveReady = false;
         this.connected = true;
         this.outboundQueue = new LinkedBlockingQueue<String>();
         this.pendingPacket = new AX25Packet[8];
         this.lastRxAt = System.currentTimeMillis();
+        this.lastTxAt = 0;
         this.monitorThread = new Thread(this);
         this.monitorThread.start();
     }
@@ -119,13 +124,7 @@ public class TerminalLinkSession implements Runnable
         this.lastRxAt = System.currentTimeMillis();
         if (packet.controlContains("SABM"))
         {
-            JSONArray respCtrl = new JSONArray();
-            respCtrl.put("UA");
-            AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
-            try
-            {
-                this.link.getKISSClient().send(pr);
-            } catch (Exception e) {}
+            this.lastSABMAt = System.currentTimeMillis();
         }
 
         // Numbered information frame
@@ -209,35 +208,59 @@ public class TerminalLinkSession implements Runnable
             long now = System.currentTimeMillis();
             try
             {
-                // We are waiting for the remote side to give us a RR
-                if (!this.remoteReceiveReady)
-                {
-                    // We sent something, maybe they didnt get it?
-                    if (this.pendingPacket[this.txModulus] != null)
+                if (!this.sabmComplete)
+                { // SABM has not completed
+                    if (((now - this.lastSABMAt) < 7000) && this.lastTxAge() > 2000)
+                    {   //Remote is still waiting for UA
+                        JSONObject jPacket = new JSONObject();
+                        jPacket.put("source", this.link.getCallsign());
+                        jPacket.put("destination", this.callsign);
+                        JSONArray respCtrl = new JSONArray();
+                        respCtrl.put("UA");
+                        respCtrl.put("R");
+                        jPacket.put("control",respCtrl);
+                        AX25Packet pr = new AX25Packet(jPacket);
+                        TerminalLinkSession.this.link.getKISSClient().send(pr);
+                    } else {
+                        // switch over to fully ready mode SABM complete
+                        this.sabmComplete = true;
+                        this.remoteReceiveReady = true;
+                        this.sendFromQueue();
+                    }
+                } else {
+                    // We are waiting for the remote side to give us a RR
+                    if (!this.remoteReceiveReady)
                     {
-                        // ok it was sent 10 seconds ago, lets try again
-                        if (this.lastTxAge() > 10000)
+                        // We sent something, maybe they didnt get it?
+                        if (this.pendingPacket[this.txModulus] != null)
                         {
-                            this.link.getKISSClient().send(this.pendingPacket[this.txModulus]);
-                            this.lastTxAt = now;
+                            // ok it was sent 10 seconds ago, lets try again
+                            if (this.lastTxAge() > 10000)
+                            {
+                                this.link.getKISSClient().send(this.pendingPacket[this.txModulus]);
+                                this.lastTxAt = now;
+                            }
+                        } else {
+
                         }
                     }
-                }
 
-                // If this connection goes quiet for 5 minutes, there is a good chance its dead, lets kill it
-                if (this.lastRxAge() > 300000)
-                {
-                    JSONObject jPacket = new JSONObject();
-                    jPacket.put("source", this.link.getCallsign());
-                    jPacket.put("destination", this.callsign);
-                    JSONArray cArray = new JSONArray();
-                    cArray.put("DISC");
-                    cArray.put("C");
-                    jPacket.put("control", cArray);
-                    AX25Packet packet = new AX25Packet(jPacket);
-                    this.link.getKISSClient().send(packet);
-                    this.handleDisconnect();
+                    // If this connection goes quiet for 5 minutes, there is a good chance its dead, lets kill it
+                    if (this.lastRxAge() > 300000)
+                    {
+                        JSONObject jPacket = new JSONObject();
+                        jPacket.put("source", this.link.getCallsign());
+                        jPacket.put("destination", this.callsign);
+                        JSONArray cArray = new JSONArray();
+                        cArray.put("DISC");
+                        cArray.put("C");
+                        jPacket.put("control", cArray);
+                        AX25Packet packet = new AX25Packet(jPacket);
+                        this.link.getKISSClient().send(packet);
+                        this.handleDisconnect();
+                    }
                 }
+                
             } catch (Exception rxx) {}
             try
             {

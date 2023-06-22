@@ -70,13 +70,13 @@ public class TerminalLink implements AX25PacketListener
                 }
                 if (packet.controlContains("DISC"))
                 {
+                    JSONArray respCtrl = new JSONArray();
+                    respCtrl.put("UA");
+                    AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
+                    this.kClient.send(pr);
                     TerminalLinkSession session = this.sessions.get(packet.getSourceCallsign());
                     if (session != null)
                     {
-                        JSONArray respCtrl = new JSONArray();
-                        respCtrl.put("UA");
-                        AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
-                        this.kClient.send(pr);
                         this.sessions.remove(packet.getSourceCallsign());
                         session.handleDisconnect();
                     }
