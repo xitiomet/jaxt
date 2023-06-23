@@ -11,6 +11,7 @@ var wsProtocol = 'ws';
 var httpUrl = '';
 var apiPassword = "";
 var sourceCallsign = "";
+var runningApp = undefined;
 
 function getParameterByName(name, url = window.location.href) 
 {
@@ -65,7 +66,8 @@ window.onresize = function() {
     fitStuff();
 }
 
-function prompt(term) {
+function prompt(term)
+{
     command = '';
     term.write('\r\n$ ');
 }
@@ -124,30 +126,54 @@ var commands = {
         prompt(term);
       },
       description: 'Set your callsign. Example: $ source mycall-5'
-    }
+    },
+    connect: {
+        f: (args) => {
+            if (sourceCallsign == "")
+            {
+                term.writeln("ERROR: you must set your callsign first by using the \"source\" command");
+            } else {
+                runningApp = connectApp;
+                runningApp.start(args);
+            }
+        },
+        description: 'Connect to a remote radio terminal. Example: $ connect term-5'
+    },
   };
 
-function runCommand(term, text) {
-    const tsplit = text.trim().split(' ');
-    const command = tsplit[0];
-    const args = tsplit.splice(1);
-    if (command.length > 0) {
-      term.writeln('');
-      if (command in commands) {
-        commands[command].f(args);
-        return;
-      }
-      term.writeln(`${command}: command not found`);
+function runCommand(term, text)
+{
+    if (runningApp == undefined || runningApp == null)
+    {
+        const tsplit = text.trim().split(' ');
+        const command = tsplit[0];
+        const args = tsplit.splice(1);
+        if (command.length > 0) 
+        {
+            term.writeln('');
+            if (command in commands) {
+                commands[command].f(args);
+                return;
+            }
+            term.writeln(`${command}: command not found`);
+        }
+        prompt(term);
+    } else {
+        runningApp.handleCommand(text);
     }
-    prompt(term);
-  }
+}
 
 function handlePacket(packet)
 {
-
+    if ((runningApp != null && runningApp != undefined) && packet.destination == sourceCallsign)
+    {
+        //console.log("App should handle packet!");
+        runningApp.handlePacket(packet);
+    }
 }
 
-function runFakeTerminal() {
+function runFakeTerminal() 
+{
     if (term._initialized) {
       return;
     }
@@ -166,6 +192,11 @@ function runFakeTerminal() {
         switch (e) {
           case '\u0003': // Ctrl+C
             term.write('^C');
+            if (runningApp != null)
+            {
+                runningApp.stop();
+                runningApp = null;
+            }
             prompt(term);
             break;
           case '\r': // Enter

@@ -125,6 +125,18 @@ public class TerminalLinkSession implements Runnable
         if (packet.controlContains("SABM"))
         {
             this.lastSABMAt = System.currentTimeMillis();
+            JSONObject jPacket = new JSONObject();
+            jPacket.put("source", this.link.getCallsign());
+            jPacket.put("destination", this.callsign);
+            JSONArray respCtrl = new JSONArray();
+            respCtrl.put("UA");
+            respCtrl.put("R");
+            jPacket.put("control",respCtrl);
+            AX25Packet pr = new AX25Packet(jPacket);
+            try
+            {
+                TerminalLinkSession.this.link.getKISSClient().send(pr);
+            } catch (Exception tex) {}
         }
 
         // Numbered information frame

@@ -11,6 +11,9 @@
       "pattern":"\\Qjaxt/about.png\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/connect.js\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/console-32.png\\E"
     }, 
     {

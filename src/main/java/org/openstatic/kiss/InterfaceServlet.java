@@ -28,6 +28,7 @@ public class InterfaceServlet extends HttpServlet
         if ("/".equals(target))
             target = "/index.html";
         target = "/jaxt" + target;
+        //JavaKISSMain.logAppend("interface.log", "RES " + target);
         URL data = getClass().getResource(target);
         if (data != null)
         {
@@ -40,7 +41,7 @@ public class InterfaceServlet extends HttpServlet
             inputStream.transferTo(output);
             output.flush();
         } else {
-            //IRCGPTBotMain.logAppend("interface.log", "GET " + target + " 404");
+            //JavaKISSMain.logAppend("interface.log", "GET " + target + " 404");
             httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
 
         }
