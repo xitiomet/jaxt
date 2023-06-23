@@ -286,6 +286,10 @@ public class AX25Packet
 		this.commandResponse = packet.optString("commandResponse", null);
 		this.source = packet.optString("source", "NOCALL").toUpperCase();
 		this.destination = packet.optString("destination", "NOCALL").toUpperCase();
+		if ("".equals(this.source))
+			this.source = "NOCALL";
+		if ("".equals(this.destination))
+			this.destination = "NOCALL";
 	}
 
 	public JSONArray getControl()

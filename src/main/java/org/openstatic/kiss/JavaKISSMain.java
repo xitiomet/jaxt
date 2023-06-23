@@ -93,8 +93,8 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         Option loggingOption = new Option("l", "logs", true, "Enable Logging, and optionally specify a directory");
         loggingOption.setOptionalArg(true);
         options.addOption(loggingOption);
-        options.addOption(new Option("s", "source", true, "Source callsign (test payload)"));
-        options.addOption(new Option("d", "destination", true, "Destination callsign (test payload)"));
+        options.addOption(new Option("s", "source", true, "Set the default source callsign."));
+        options.addOption(new Option("d", "destination", true, "Destination callsign (for test payload)"));
         options.addOption(new Option("m", "payload", true, "Payload string to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
         options.addOption(new Option("x", "post", true, "HTTP POST packets received as JSON to url"));

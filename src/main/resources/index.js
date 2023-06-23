@@ -39,9 +39,20 @@ function updateKCS(v)
     }
 }
 
+function popupWindow(url, windowName, w, h) {
+    const y = window.top.outerHeight / 2 + window.top.screenY - ( h / 2);
+    const x = window.top.outerWidth / 2 + window.top.screenX - ( w / 2);
+    return window.open(url, windowName, `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=${w}, height=${h}, top=${y}, left=${x}`);
+}
+
+function doConsoleWindow()
+{
+    var myWindow = popupWindow('term.html?apiPassword=' + encodeURIComponent(document.getElementById('password').value), "Console", 720, 480);
+}
+
 function doTxWindow()
 {
-    var myWindow = window.open('tx.html?apiPassword=' + encodeURIComponent(document.getElementById('password').value), "Transmit", "width=455,height=335");
+    var myWindow = popupWindow('tx.html?apiPassword=' + encodeURIComponent(document.getElementById('password').value), "Transmit", 455, 335);
 }
 
 function sendEvent(wsEvent)
@@ -111,6 +122,8 @@ function setupWebsocket()
                     {
                         document.getElementById('txButton').style.display = 'inline-block';
                     }
+                    document.getElementById('consoleButton').style.display = 'inline-block';
+
                     updateKCS(jsonObject.kissConnected)
                     sendEvent({
                         "history": 100

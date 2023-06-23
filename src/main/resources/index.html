@@ -183,6 +183,10 @@
             #aboutIcon {
               cursor: pointer;
             }
+
+            #consoleIcon {
+              cursor: pointer;
+            }
           </style>
     </head>
     <body>
@@ -192,6 +196,7 @@
                 <td style="color: white;" align="left"><a href="/" id="serverTitle" style="text-decoration: none; color: white; font-size: 20px;">JAXT - AX.25 Tool</a></td>
                 <td style="padding-right: 9px;" align="right">
                   <img src="about.png" id="aboutIcon" style="width: 32px; height: 32px;" title="About" onclick="window.open('https://openstatic.org/projects/jaxt/', '_blank');" />
+                  <img src="console-32.png" id="consoleButton" style="display: none; height: 32px; padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px;" onclick="doConsoleWindow()" title="Open console" />
                   <img src="tx.png" id="txButton" style="display: none; height: 32px; padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px;" onclick="doTxWindow()" title="Open transmit dialog" />
                   <img src="led-grey.svg" id="connectionLed" style="width: 32px; height: 32px;" title="KISS Connection Status" />
                 </td>

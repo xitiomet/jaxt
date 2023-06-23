@@ -11,6 +11,9 @@
       "pattern":"\\Qjaxt/about.png\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/console-32.png\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/favicon.ico\\E"
     }, 
     {
@@ -44,6 +47,27 @@
       "pattern":"\\Qjaxt/led-red.svg\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/node_modules/xterm-addon-fit/lib/xterm-addon-fit.js.map\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/node_modules/xterm-addon-fit/lib/xterm-addon-fit.js\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/node_modules/xterm/css/xterm.css\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/node_modules/xterm/lib/xterm.js.map\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/node_modules/xterm/lib/xterm.js\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/term.html\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/term.js\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/tx.html\\E"
     }, 
     {
@@ -62,11 +86,17 @@
   "bundles":[
     {
       "name":"javax.servlet.LocalStrings",
-      "locales":["und"]
+      "locales":[
+        "", 
+        "und"
+      ]
     }, 
     {
       "name":"javax.servlet.http.LocalStrings",
-      "locales":["und"]
+      "locales":[
+        "", 
+        "und"
+      ]
     }
   ]
 }
