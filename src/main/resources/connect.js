@@ -65,6 +65,7 @@ const connectApp = {
         connectApp.rxMod = 0;
         connectApp.txMod = 0;
         connectApp.remoteReceiveNotReady = true;
+        term.writeln("(ctrl+c will end this session)");
         term.write("Connecting to " + connectApp.destCallsign + "....");
         connectApp.myInterval = setInterval(connectApp.everyTwoSeconds,2000);
     },
@@ -107,8 +108,9 @@ const connectApp = {
                 connectApp.remoteReceiveNotReady = false;
             }
         }
-        if (packet.control.include('DISC'))
+        if (packet.control.includes('DISC'))
         {
+            term.writeln("(session ended by " + connectApp.destCallsign + ")");
             if (connectApp.myInterval != null)
                 clearInterval(connectApp.myInterval);
             connectApp.myInterval = null;
