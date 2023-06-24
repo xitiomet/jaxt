@@ -38,10 +38,16 @@
             txCancelButton.disabled = false;
             var source = document.getElementById('source').value;
             var destination = document.getElementById('destination').value;
+            var pathText = document.getElementById('path').value;
+            var path = [];
+            if (pathText != "")
+                path = pathText.split(',');
             var payload = document.getElementById('payload').value;
             var txCode = {
                 "source": source,
                 "destination": destination,
+                "control": ["UI","C"],
+                "path": path,
                 "payload": payload.replace('{{tx}}', (txCountTotal - txCount) + 1),
                 "apiPassword": apiPassword
             };
@@ -116,7 +122,7 @@
 </head>
 
 <body onload="getSettings()">
-    <h2>Transmit Frame</h2>
+    <h2>Transmit UI Frame</h2>
     <table>
         <tr>
             <td>Source</td>
@@ -125,6 +131,10 @@
         <tr>
             <td>Destination</td>
             <td><input type="text" id="destination" placeholder="NOCALL" maxlength="9" /></td>
+        </tr>
+        <tr>
+            <td>Path</td>
+            <td><input type="text" id="path" placeholder="WIDE1-1,WIDE2-1" maxlength="128" /></td>
         </tr>
         <tr>
             <td>Payload<br />(<span id="pSize">0</span> / 255)</td>

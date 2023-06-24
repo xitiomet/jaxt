@@ -139,6 +139,12 @@ var commands = {
         },
         description: 'Connect to a remote radio terminal. Example: $ connect term-5'
     },
+    exit: {
+        f: (args) => {
+            window.close();
+        },
+        description: 'Exit this terminal'
+    },
   };
 
 function runCommand(term, text)

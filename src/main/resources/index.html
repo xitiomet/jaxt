@@ -175,6 +175,10 @@
                 -ms-user-select: none;
                 user-select: none;
             }
+
+            pre {
+              margin: 0px 0px 0px 0px;
+            }
             
             #txButton {
               cursor: pointer;
@@ -186,6 +190,14 @@
 
             #consoleButton {
               cursor: pointer;
+            }
+            
+            a {
+              color: #ffffff;
+            }
+
+            a:visited {
+              color: #cccccc;
             }
           </style>
     </head>
@@ -203,7 +215,7 @@
                 </tr>
             </tbody></table>
         </div>
-        <pre id="console" style="width:99%; padding: 50px 5px 5px 5px; font-family: monospace; font-size: 14px; overflow-wrap: anywhere; text-align: left; display: none;"></pre>
+        <div id="console" style="width:99%; padding: 50px 5px 5px 5px; font-family: monospace; font-size: 14px; overflow-wrap: anywhere; text-align: left; display: none;"></div>
         <div id="login" style="width:99%; padding: 150px 5px 5px 5px; font-family: monospace; font-size: 10px; overflow-wrap: anywhere; text-align: center;">
           <table style="font-family: Sans Serif; box-shadow: 3px 3px 3px grey; background: white; font-size: 18px; color: black; border: 3px #AAAAAA solid; border-radius: 5px;" align="center" cellspacing="3" cellpadding="4">
             <tr><td style="text-align: center;"><b style="color: red;" id="errorMsg"></b></td></tr>

@@ -2,6 +2,14 @@ package org.openstatic.kiss;
 
 
 import org.json.*;
+import org.openstatic.aprs.parser.APRSPacket;
+import org.openstatic.aprs.parser.APRSTypes;
+import org.openstatic.aprs.parser.Digipeater;
+import org.openstatic.aprs.parser.InformationField;
+import org.openstatic.aprs.parser.ObjectPacket;
+import org.openstatic.aprs.parser.Parser;
+import org.openstatic.aprs.parser.Position;
+import org.openstatic.aprs.parser.PositionPacket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -104,7 +112,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
         
         if (sessionProperties.optBoolean("auth", false))
         {
-            if (j.has("source") && j.has("destination"))
+            if (j.has("source") && j.has("destination") && j.has("control"))
             {
                 AX25Packet packet = new AX25Packet(j);
                 try
@@ -333,6 +341,60 @@ public class APIWebServer implements AX25PacketListener, Runnable
         JSONObject jPacket = packet.toJSONObject();
         broadcastJSONObject(jPacket);
         addHistory(jPacket);
+        broadcastAPRS(packet);
+    }
+
+    public void broadcastAPRS(AX25Packet packet)
+    {
+        try
+        {
+            ArrayList<Digipeater> digis = new ArrayList<Digipeater>();
+            String[] paths = packet.getPath();
+            for(int i = 0; i < paths.length; i++)
+            {
+                digis.add(new Digipeater(paths[i]));
+            }
+            APRSPacket aprs = Parser.parseBody(packet.getSourceCallsign(), packet.getDestinationCallsign(), digis, packet.getPayload());
+            if (aprs.isAprs())
+            {
+                if (aprs.getType() != APRSTypes.T_UNSPECIFIED)
+                {
+                    InformationField aprsData = aprs.getAprsInformation();
+                    if ( aprsData != null) 
+                    {
+                        JSONObject aprsJSON = new JSONObject();
+                        aprsJSON.put("source", packet.getSourceCallsign());
+                        aprsJSON.put("destination", packet.getDestinationCallsign());
+                        if (packet.getPath() != null)
+                            aprsJSON.put("path", new JSONArray(packet.getPath()));
+                        aprsJSON.put("comment", aprsData.getComment());
+                        aprsJSON.put("type", aprs.getType());
+                        aprsJSON.put("action", "APRS");
+
+                        if (aprsData instanceof PositionPacket)
+                        {
+                            PositionPacket posData = ((PositionPacket)aprsData);
+                            Position position = posData.getPosition();
+                            aprsJSON.put("latitude", position.getLatitude());
+                            aprsJSON.put("longitude", position.getLongitude());
+                            aprsJSON.put("altitude", position.getAltitude());
+                        }
+                        if (aprsData instanceof ObjectPacket)
+                        {
+                            ObjectPacket objectPacket = ((ObjectPacket)aprsData);
+                            Position position = objectPacket.getPosition();
+                            aprsJSON.put("latitude", position.getLatitude());
+                            aprsJSON.put("longitude", position.getLongitude());
+                            aprsJSON.put("altitude", position.getAltitude());
+                        }
+                        broadcastJSONObject(aprsJSON);
+                        addHistory(aprsJSON);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            //e.printStackTrace(System.err);
+        }
     }
 
     @Override
@@ -341,6 +403,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
         JSONObject jPacket = packet.toJSONObject();
         broadcastJSONObject(jPacket);
         addHistory(jPacket);
+        broadcastAPRS(packet);
     }
 
     @Override

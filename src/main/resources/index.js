@@ -134,6 +134,10 @@ function setupWebsocket()
                     updateKCS(true);
                 } else if (action == 'kissDisconnected') {
                     updateKCS(false);
+                } else if (action == 'info') {
+                    logIt(jsonObject.text);
+                } else if (action == 'APRS') {
+                    logAPRS(jsonObject);
                 }
             } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("control")) {
                 logPacket(jsonObject);
@@ -165,14 +169,14 @@ function getDTString(date)
     }
 }
 
-function logIt(message)
+function logIt(message, color = '#BBBBBB')
 {
     var console = document.getElementById('console');
     var d = new Date();
     var msgSplit = message.split(/\r?\n/);
     for (var i = 0; i < msgSplit.length; i++)
     {
-        console.innerHTML +=  "(INFO " + getDTString(d) + ") " + msgSplit[i] + "\n";
+        console.innerHTML +=  "<pre style=\"color: " + color + ";\">(INFO " + getDTString(d) + ") " + msgSplit[i] + "</pre>";
     }
     window.scrollTo(0,document.body.scrollHeight);
 }
@@ -196,7 +200,28 @@ function logPacket(packet)
     {
         ctrlStr += " " + flag;
     }
-    console.innerHTML +=  "(" + packet.direction.toUpperCase() + " @ " + getDTString(d) + ") " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " [" + padString(ctrlStr,14) + " ] " + cleanPayload(packet.payload) + "\n";
+    console.innerHTML +=  "<pre>(" + packet.direction.toUpperCase() + " @ " + getDTString(d) + ") " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " [" + padString(ctrlStr,14) + " ] " + cleanPayload(packet.payload) + "</pre>";
+    window.scrollTo(0,document.body.scrollHeight);
+}
+
+
+function logAPRS(jsonObject)
+{
+    var console = document.getElementById('console');
+    var d = new Date();
+    if (jsonObject.hasOwnProperty('timestamp'))
+        d = new Date(packet.timestamp);
+    var line =  "<div style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": " + jsonObject.source;
+    
+    if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
+    {
+        var lat = jsonObject.latitude.toFixed(6);
+        var lon = jsonObject.longitude.toFixed(6);
+        line += " <a target=\"_blank\" href=\"https://www.google.com/maps/?q=" + lat + "," + lon + "\">" + lat + "," + lon + "</a>"
+    }
+    line += " " + jsonObject.comment + "</div>";
+
+    console.innerHTML += line;
     window.scrollTo(0,document.body.scrollHeight);
 }
 
