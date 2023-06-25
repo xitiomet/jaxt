@@ -164,7 +164,7 @@ NOTE: commas are used to seperate parameters after the command instead of spaces
 
 ### Web Terminal
 
-![](https://openstatic.org/projects/jaxt/jaxt-simple-wt.png))
+![](https://openstatic.org/projects/jaxt/jaxt-simple-wt.png)
 
 For remote control of JAXT, there is a web terminal in the top bar of the web interface.
 
