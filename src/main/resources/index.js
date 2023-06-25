@@ -6,6 +6,7 @@ var protocol = location.protocol;
 var port = location.port;
 var wsProtocol = 'ws';
 var httpUrl = '';
+var termAuth = '';
 
 function getParameterByName(name, url = window.location.href) 
 {
@@ -47,7 +48,7 @@ function popupWindow(url, windowName, w, h) {
 
 function doConsoleWindow()
 {
-    var myWindow = popupWindow('term.html?apiPassword=' + encodeURIComponent(document.getElementById('password').value), "Console", 720, 480);
+    var myWindow = popupWindow('term.html?termAuth=' + encodeURIComponent(termAuth), "Console", 720, 480);
 }
 
 function doTxWindow()
@@ -123,7 +124,7 @@ function setupWebsocket()
                         document.getElementById('txButton').style.display = 'inline-block';
                     }
                     document.getElementById('consoleButton').style.display = 'inline-block';
-
+                    termAuth = jsonObject.termAuth;
                     updateKCS(jsonObject.kissConnected)
                     sendEvent({
                         "history": 100

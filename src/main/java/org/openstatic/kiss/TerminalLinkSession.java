@@ -97,6 +97,23 @@ public class TerminalLinkSession implements Runnable
         } catch (Exception e) {}
     }
 
+    public void disconnect()
+    {
+        JSONObject jPacket = new JSONObject();
+        jPacket.put("source", this.link.getCallsign());
+        jPacket.put("destination", this.callsign);
+        JSONArray cArray = new JSONArray();
+        cArray.put("DISC");
+        cArray.put("C");
+        jPacket.put("control", cArray);
+        AX25Packet packet = new AX25Packet(jPacket);
+        try
+        {
+            this.link.getKISSClient().send(packet);
+        } catch (Exception e) {}
+        this.handleDisconnect();
+    }
+
     protected void handleDisconnect()
     {
         if (this.connected)
@@ -265,16 +282,7 @@ public class TerminalLinkSession implements Runnable
                     // If this connection goes quiet for 5 minutes, there is a good chance its dead, lets kill it
                     if (this.lastRxAge() > 300000)
                     {
-                        JSONObject jPacket = new JSONObject();
-                        jPacket.put("source", this.link.getCallsign());
-                        jPacket.put("destination", this.callsign);
-                        JSONArray cArray = new JSONArray();
-                        cArray.put("DISC");
-                        cArray.put("C");
-                        jPacket.put("control", cArray);
-                        AX25Packet packet = new AX25Packet(jPacket);
-                        this.link.getKISSClient().send(packet);
-                        this.handleDisconnect();
+                        this.disconnect();
                     }
                 }
                 

@@ -17,7 +17,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Arrays;
 
 import javax.servlet.ServletException;
@@ -79,6 +82,25 @@ public class APIWebServer implements AX25PacketListener, Runnable
         this.pingPongThread.start();
     }
 
+    public static synchronized String generateBigAlphaKey(int key_length)
+    {
+        try
+        {
+            // make sure we never get the same millis!
+            Thread.sleep(1);
+        } catch (Exception e) {}
+        Random n = new Random(System.currentTimeMillis());
+        String alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        StringBuffer return_key = new StringBuffer();
+        for (int i = 0; i < key_length; i++)
+        {
+            return_key.append(alpha.charAt(n.nextInt(alpha.length())));
+        }
+        String randKey = return_key.toString();
+        //System.err.println("Generated Rule ID: " + randKey);
+        return randKey;
+    }
+
     public void addHistory(JSONObject obj)
     {
         this.packetHistory.add(obj);
@@ -86,10 +108,11 @@ public class APIWebServer implements AX25PacketListener, Runnable
             this.packetHistory.remove(0);
     }
 
-    public static void sendAuthOk(WebSocketSession session)
+    public static void sendAuthOk(WebSocketSession session, String termAuth)
     {
         JSONObject authJsonObject = new JSONObject();
         authJsonObject.put("action", "authOk");
+        authJsonObject.put("termAuth", termAuth);
         authJsonObject.put("kissConnected", APIWebServer.instance.kClient.isConnected());
         authJsonObject.put("txDisabled", JavaKISSMain.settings.optBoolean("txDisabled", false));
         authJsonObject.put("availableHistory", APIWebServer.instance.packetHistory.size());
@@ -102,16 +125,28 @@ public class APIWebServer implements AX25PacketListener, Runnable
         if (!sessionProperties.optBoolean("auth", false))
         {
             String settingPassword = JavaKISSMain.settings.optString("apiPassword","");
-            boolean authGood = settingPassword.equals(j.optString("apiPassword",""));
-            if (authGood)
+            if (j.has("apiPassword"))
             {
-                sessionProperties.put("auth", true);
-                sendAuthOk(session);
-            } else {
-                JSONObject errorJsonObject = new JSONObject();
-                errorJsonObject.put("action", "authFail");
-                errorJsonObject.put("error", "Invalid apiPassword!");
-                session.getRemote().sendStringByFuture(errorJsonObject.toString());
+                boolean authGood = settingPassword.equals(j.optString("apiPassword",""));
+                if (authGood)
+                {
+                    String termAuth = generateBigAlphaKey(16);
+                    sessionProperties.put("auth", true);
+                    sessionProperties.put("termAuth", termAuth);
+                    sendAuthOk(session,termAuth);
+                } else {
+                    JSONObject errorJsonObject = new JSONObject();
+                    errorJsonObject.put("action", "authFail");
+                    errorJsonObject.put("error", "Invalid apiPassword!");
+                    session.getRemote().sendStringByFuture(errorJsonObject.toString());
+                }
+            } else if (j.has("termAuth")) {
+                String termAuth = j.optString("termAuth", "");
+                if (validateTermAuth(termAuth))
+                {
+                    sessionProperties.put("auth", true);
+                    sendAuthOk(session,termAuth);
+                }
             }
         }
         
@@ -180,6 +215,13 @@ public class APIWebServer implements AX25PacketListener, Runnable
             session.getRemote().sendStringByFuture(errorJsonObject.toString());
         }
         this.sessionProps.put(session, sessionProperties);
+    }
+
+    public boolean validateTermAuth(String termAuth)
+    {
+        if (termAuth == null) return false;
+        List<String> termAuths = this.sessionProps.values().stream().map((p) -> p.optString("termAuth", null)).filter((v) -> { return !"".equals(v) && v != null; }).collect(Collectors.toList());
+        return termAuths.contains(termAuth);
     }
 
     private static String[] JSONArrayToStringArray(JSONArray arry)
@@ -310,8 +352,10 @@ public class APIWebServer implements AX25PacketListener, Runnable
 
                 if (settingPassword.equals(""))
                 {
+                    String termAuth = generateBigAlphaKey(16);
                     sessionProperties.put("auth", true);
-                    APIWebServer.sendAuthOk(wssession);
+                    sessionProperties.put("termAuth", termAuth);
+                    APIWebServer.sendAuthOk(wssession, termAuth);
                 }
                 APIWebServer.instance.sessionProps.put(wssession, sessionProperties);
             } else {
@@ -405,7 +449,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
             //System.err.println("Path: " + target);
             Set<String> parameterNames = request.getParameterMap().keySet();
             JSONObject response = new JSONObject();
-            if (JavaKISSMain.settings.optString("apiPassword","").equals(request.getParameter("apiPassword")))
+            if (JavaKISSMain.settings.optString("apiPassword","").equals(request.getParameter("apiPassword")) || APIWebServer.instance.validateTermAuth(request.getParameter("termAuth")))
             {
                 
                 if (target.equals("/transmit/"))

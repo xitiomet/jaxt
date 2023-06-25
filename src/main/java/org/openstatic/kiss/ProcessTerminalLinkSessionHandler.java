@@ -14,10 +14,12 @@ public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHan
     private BufferedReader std_br;
     private TerminalLinkSession session;
     private Thread thread;
+    private boolean wasKilled;
 
     public ProcessTerminalLinkSessionHandler(ProcessBuilder builder)
     {
         this.processBuilder = builder.redirectErrorStream(true);
+        this.wasKilled = false;
     }
 
     @Override
@@ -31,6 +33,7 @@ public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHan
     public void onDisconnect(TerminalLinkSession session) 
     {        
         this.process.destroy();
+        this.wasKilled = true;
     }
 
     @Override
@@ -54,6 +57,10 @@ public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHan
             } catch (Exception dr) {
                 dr.printStackTrace(System.err);
             }
+        }
+        if (!wasKilled)
+        {
+            this.session.disconnect();
         }
     }
 

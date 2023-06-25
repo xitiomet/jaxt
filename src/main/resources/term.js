@@ -9,7 +9,7 @@ var protocol = location.protocol;
 var port = location.port;
 var wsProtocol = 'ws';
 var httpUrl = '';
-var apiPassword = "";
+var termAuth = "";
 var sourceCallsign = "";
 var runningApp = undefined;
 
@@ -31,8 +31,8 @@ function fitStuff()
 }
 
 window.onload = function() {
-    apiPassword = getParameterByName('apiPassword');
-    if (apiPassword != null)
+    termAuth = getParameterByName('termAuth');
+    if (termAuth != null)
     {
         login();
     }
@@ -45,7 +45,7 @@ function login()
     term.loadAddon(fitAddon);
     fitStuff();
     $.ajax({
-        url: "jaxt/api/settings/?apiPassword=" + apiPassword,
+        url: "jaxt/api/settings/?termAuth=" + termAuth,
         type: 'GET',
         dataType: 'json',
         success: (data) => {
@@ -58,7 +58,7 @@ function login()
             }
             setupWebsocket();
         },
-        error: () => { continueStartup(); }
+        error: () => { }
     });
 }
 
@@ -272,7 +272,7 @@ function sendEvent(wsEvent)
 function doAuth()
 {
     sendEvent({
-        "apiPassword": apiPassword,
+        "termAuth": termAuth,
         "termId": Date.now()
     });
 }
