@@ -96,6 +96,7 @@ var commands = {
                 var packet = {
                     "source": sourceCallsign,
                     "destination": destinationCallsign,
+                    "control": ["UI","C"],
                     "payload": payload
                 };
                 sendEvent(packet);
