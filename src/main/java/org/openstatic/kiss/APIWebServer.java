@@ -14,9 +14,11 @@ import org.openstatic.aprs.parser.PositionPacket;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.io.BufferedReader;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.Arrays;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -34,12 +36,14 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.util.ajax.JSON;
 
 public class APIWebServer implements AX25PacketListener, Runnable
 {
     private Server httpServer;
     protected ArrayList<WebSocketSession> wsSessions;
     protected HashMap<WebSocketSession, JSONObject> sessionProps;
+    protected HashMap<WebSocketSession, APITermProcessHandler> processes;
     private KISSClient kClient;
     private Thread pingPongThread;
     private ArrayList<JSONObject> packetHistory;
@@ -54,6 +58,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
         APIWebServer.instance = this;
         this.wsSessions = new ArrayList<WebSocketSession>();
         this.sessionProps = new HashMap<WebSocketSession, JSONObject>();
+        this.processes = new HashMap<WebSocketSession, APITermProcessHandler>();
         httpServer = new Server(JavaKISSMain.settings.optInt("apiPort", 8101));
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         context.setContextPath("/");
@@ -130,6 +135,44 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     String histPacket = this.packetHistory.get(i).toString();
                     session.getRemote().sendStringByFuture(histPacket);
                 }
+            } else if (j.has("termId")) {
+                sessionProperties.put("termId", j.optLong("termId", 0));
+                JSONObject commandsObject = new JSONObject();
+                commandsObject.put("action", "commands");
+                if (JavaKISSMain.settings.has("commandsFile"))
+                {
+                    try
+                    {
+                        JSONObject commands = JavaKISSMain.loadJSONObject(new File(JavaKISSMain.settings.optString("commandsFile")));
+                        commandsObject.put("commands", commands);
+                        session.getRemote().sendStringByFuture(commandsObject.toString());
+                        sessionProperties.put("commands", commands);
+                    } catch (Exception cexc) {}
+                }
+            } else if (j.has("action")) {
+                String action = j.optString("action","");
+                if (action.equals("command") && sessionProperties.has("termId"))
+                {
+                    JSONArray argJSONArray = j.optJSONArray("args");
+                    String[] args = JSONArrayToStringArray(argJSONArray);
+                    handleCommand(session, sessionProperties, j.optString("command"), args);
+                } else if (action.equals("input") && sessionProperties.has("termId")) {
+                    APITermProcessHandler apiTermProcessHandler = this.processes.get(session);
+                    if (apiTermProcessHandler != null)
+                    {
+                        apiTermProcessHandler.println(j.optString("text",""));
+                    }
+                } else if (action.equals("kill") && sessionProperties.has("termId")) {
+                    if (this.processes.containsKey(session))
+                    {
+                        APITermProcessHandler apiTermProcessHandler = this.processes.get(session);
+                        if (apiTermProcessHandler != null)
+                        {
+                            apiTermProcessHandler.kill();
+                        }
+                        this.processes.remove(session);
+                    }
+                }
             }
         } else {
             JSONObject errorJsonObject = new JSONObject();
@@ -139,11 +182,23 @@ public class APIWebServer implements AX25PacketListener, Runnable
         this.sessionProps.put(session, sessionProperties);
     }
 
+    private static String[] JSONArrayToStringArray(JSONArray arry)
+    {
+        String[] args = new String[arry.length()];
+        for (int i = 0; i < arry.length(); i++)
+        {
+            args[i] = arry.getString(i);
+        }
+        return args;
+    }
+
     public void broadcastJSONObject(JSONObject jo) 
     {
         String message = jo.toString();
-        for (Session s : this.wsSessions) {
-            try {
+        for (Session s : this.wsSessions)
+        {
+            try
+            {
                 JSONObject sessionProps = this.sessionProps.get(s);
                 if (sessionProps.optBoolean("auth", false))
                 {
@@ -153,6 +208,68 @@ public class APIWebServer implements AX25PacketListener, Runnable
 
             }
         }
+    }
+
+    public void sendJSONObject(JSONObject jo, long termId) 
+    {
+        String message = jo.toString();
+        for (Session s : this.wsSessions) 
+        {
+            try
+            {
+                JSONObject sessionProps = this.sessionProps.get(s);
+                if (sessionProps.optBoolean("auth", false) && sessionProps.optLong("termId", 0) == termId)
+                {
+                    s.getRemote().sendStringByFuture(message);
+                }
+            } catch (Exception e) {
+
+            }
+        }
+    }
+
+    public void handleCommand(WebSocketSession session, JSONObject sessionProperties, String command, String[] args)
+    {
+        long termId = sessionProperties.optLong("termId", 0);
+        JSONObject commands = sessionProperties.optJSONObject("commands", new JSONObject());
+        if (commands.has(command))
+        {
+            JSONObject commandObject = commands.getJSONObject(command);
+            ArrayList<String> commandWithArgs = new ArrayList<String>();
+            if (commandObject.has("execute"))
+            {
+                String[] execute = JSONArrayToStringArray(commandObject.getJSONArray("execute"));
+                commandWithArgs.addAll(Arrays.asList(execute));
+                if (!commandObject.optBoolean("ignoreExtraArgs", false))
+                {
+                    commandWithArgs.addAll(Arrays.asList(args));
+                }
+                ProcessBuilder pb = new ProcessBuilder(commandWithArgs);
+                APITermProcessHandler apiTermProcessHandler = new APITermProcessHandler(termId, pb);
+                this.processes.put(session, apiTermProcessHandler);
+            } else {
+                writeTerm(termId, command + ": invalid command entry\r\n");
+                promptTerm(termId);
+            }
+        } else {
+            writeTerm(termId, command + ": command not found\r\n");
+            promptTerm(termId);
+        }
+    }
+
+    public void writeTerm(long termId, String text)
+    {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "write");
+        jo.put("data", text);
+        sendJSONObject(jo, termId);
+    }
+
+    public void promptTerm(long termId)
+    {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "prompt");
+        sendJSONObject(jo, termId);
     }
 
     public static class EventsWebSocketServlet extends WebSocketServlet {
@@ -208,6 +325,12 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 WebSocketSession wssession = (WebSocketSession) session;
                 APIWebServer.instance.wsSessions.remove(wssession);
                 APIWebServer.instance.sessionProps.remove(wssession);
+                if (APIWebServer.instance.processes.containsKey(wssession))
+                {
+                    APITermProcessHandler proc = APIWebServer.instance.processes.get(wssession);
+                    proc.kill();
+                    APIWebServer.instance.processes.remove(wssession);
+                }
             }
         }
 

@@ -56,14 +56,14 @@ Java AX25 Tool: A Java KISS TNC Client implementation
     "terminal": {
         "CMD-1": {
             "type": "process",
-            "command": [
+            "execute": [
                 "cmd.exe",
                 "/Q"
             ]
         },
         "BASH-1": {
             "type": "process",
-            "command": [
+            "execute": [
                 "/bin/bash",
                 "--login"
             ]

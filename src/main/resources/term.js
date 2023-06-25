@@ -32,8 +32,15 @@ function fitStuff()
 
 window.onload = function() {
     apiPassword = getParameterByName('apiPassword');
-    term = new Terminal({cursorBlink: true,
-        allowProposedApi: true});
+    if (apiPassword != null)
+    {
+        login();
+    }
+};
+
+function login()
+{
+    term = new Terminal({cursorBlink: true, allowProposedApi: true});
     term.open(document.getElementById('terminal')); 
     term.loadAddon(fitAddon);
     fitStuff();
@@ -49,17 +56,10 @@ window.onload = function() {
                 if (sourceCallsign == "")
                     sourceCallsign = null;
             }
-            continueStartup();
+            setupWebsocket();
         },
         error: () => { continueStartup(); }
     });
-    
-};
-
-function continueStartup()
-{
-    setupWebsocket();
-    runFakeTerminal();
 }
 
 window.onresize = function() {
@@ -147,6 +147,22 @@ var commands = {
     },
   };
 
+const remoteApp = {
+    start: () => {
+
+    },
+    stop: () => {
+        sendEvent({"action": "kill"});
+    },
+    handlePacket: (packet) => {
+
+    },
+    handleCommand: (command) => {
+        sendEvent({"action": "input", "text": command});
+        term.writeln('');
+    }
+};
+
 function runCommand(term, text)
 {
     if (runningApp == undefined || runningApp == null)
@@ -157,8 +173,19 @@ function runCommand(term, text)
         if (command.length > 0) 
         {
             term.writeln('');
-            if (command in commands) {
-                commands[command].f(args);
+            if (command in commands) 
+            {
+                var commandEntry = commands[command];
+                if (commandEntry.hasOwnProperty('remote'))
+                {
+                    if (commandEntry.remote)
+                    {
+                        sendEvent({"action": "command", "command": command, "args": args});
+                        runningApp = remoteApp;
+                        return;
+                    }
+                }
+                commandEntry.f(args);
                 return;
             }
             term.writeln(`${command}: command not found`);
@@ -245,7 +272,8 @@ function sendEvent(wsEvent)
 function doAuth()
 {
     sendEvent({
-        "apiPassword": apiPassword
+        "apiPassword": apiPassword,
+        "termId": Date.now()
     });
 }
 
@@ -285,13 +313,28 @@ function setupWebsocket()
             {
                 var action = jsonObject.action;
                 if (action == 'authOk') {
-                    
+                    runFakeTerminal();
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'kissConnected') {
                     term.writeln("WARNING: KISS Connected");
                 } else if (action == 'kissDisconnected') {
                     term.writeln("WARNING: Disconnected");
+                } else if (action == 'write') {
+                    term.write(jsonObject.data);
+                } else if (action == 'commands') {
+                    Object.entries(jsonObject.commands).forEach((entry) => {
+                        const [key, value] = entry;
+                        value.remote = true;
+                        commands[key] = value;
+                    });
+                } else if (action == 'prompt') {
+                    if (runningApp != null)
+                    {
+                        runningApp.stop();
+                        runningApp = null;
+                    }
+                    prompt(term);
                 }
             } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("control")) {
                 handlePacket(jsonObject);

@@ -19,7 +19,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
-
+import java.util.stream.Collectors;
 
 import org.apache.commons.cli.*;
 import org.json.JSONArray;
@@ -95,6 +95,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         options.addOption(loggingOption);
         options.addOption(new Option("s", "source", true, "Set the default source callsign."));
         options.addOption(new Option("d", "destination", true, "Destination callsign (for test payload)"));
+        options.addOption(new Option("c", "commads", true, "Specify commands.json file location for web terminal"));
         options.addOption(new Option("m", "payload", true, "Payload string to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
         options.addOption(new Option("x", "post", true, "HTTP POST packets received as JSON to url"));
@@ -165,7 +166,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 String[] values = cmd.getOptionValues("z");
                 JSONObject xarg = new JSONObject();
                 xarg.put("type", "process");
-                xarg.put("command", new JSONArray(values[1].split(Pattern.quote(","))));
+                xarg.put("execute", new JSONArray(values[1].split(Pattern.quote(","))));
                 terminal.put(values[0].toUpperCase(), xarg);
                 settings.put("terminal", terminal);
             }
@@ -178,6 +179,11 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             if (cmd.hasOption("l"))
             {
                 settings.put("logPath", cmd.getOptionValue("l", "./jaxt-logs"));
+            }
+
+            if (cmd.hasOption("c"))
+            {
+                settings.put("commandsFile", cmd.getOptionValue("c", "./commands.json"));
             }
 
             if (cmd.hasOption("p"))
@@ -195,6 +201,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             KISSClient kClient = new KISSClient(settings.optString("host"), settings.optInt("port",8100));
             kClient.setTxDisabled(settings.optBoolean("txDisabled", false));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
+            JavaKISSMain.logAppend("main.log", "[STARTED]");
             saveSettings();
             if (settings.has("terminal"))
             {
@@ -204,26 +211,30 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 {
                     final JSONObject tSetup = terminalSetup.optJSONObject(key, new JSONObject());
                     TerminalLink tl = new TerminalLink(kClient, key);
-                    tl.addTerminalLinkListener(new TerminalLinkListener() {
-
-                        @Override
-                        public void onTerminalLinkSession(final TerminalLinkSession session) 
+                    if (tSetup.optString("type","").equals("process"))
+                    {
+                        JSONArray command = tSetup.optJSONArray("execute");
+                        ArrayList<String> commandArray = new ArrayList<String>();
+                        for(int i = 0; i < command.length(); i++)
                         {
-                            if (tSetup.optString("type","").equals("process"))
+                            commandArray.add(command.getString(i));
+                        }
+                        JavaKISSMain.logAppend("main.log", "[TERMINAL LINK " + key + "] " + commandArray.stream().collect(Collectors.joining(" ")));
+                        tl.addTerminalLinkListener(new TerminalLinkListener() {
+                            @Override
+                            public void onTerminalLinkSession(final TerminalLinkSession session) 
                             {
-                                JSONArray command = tSetup.optJSONArray("command");
+                                JSONArray command = tSetup.optJSONArray("execute");
                                 ArrayList<String> commandArray = new ArrayList<String>();
-                                for(int i = 0; i < command.length(); i++)
-                                {
-                                    commandArray.add(command.getString(i));
-                                }
+                                
                                 ProcessBuilder prb = new ProcessBuilder(commandArray.toArray(new String[commandArray.size()]));                        
                                 session.setHandler(new ProcessTerminalLinkSessionHandler(prb));
+                                JavaKISSMain.logAppend("main.log", "[TERMINAL " + key + "] " + session.getRemoteCallsign() + " " + commandArray.stream().collect(Collectors.joining(" ")));
                             }
-                        }
-                
-                    });
-                    JavaKISSMain.logAppend("main.log", "[TERMINAL @" + key + "] " + tSetup.toString());
+                    
+                        });
+                    }
+                    
                 }
             }
             
