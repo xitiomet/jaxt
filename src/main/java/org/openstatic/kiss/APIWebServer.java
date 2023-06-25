@@ -513,54 +513,57 @@ public class APIWebServer implements AX25PacketListener, Runnable
 
     public void broadcastAPRS(AX25Packet packet)
     {
-        try
+        if (packet.controlContains("UI"))
         {
-            ArrayList<Digipeater> digis = new ArrayList<Digipeater>();
-            String[] paths = packet.getPath();
-            for(int i = 0; i < paths.length; i++)
+            try
             {
-                digis.add(new Digipeater(paths[i]));
-            }
-            APRSPacket aprs = Parser.parseBody(packet.getSourceCallsign(), packet.getDestinationCallsign(), digis, packet.getPayload());
-            if (aprs.isAprs())
-            {
-                if (aprs.getType() != APRSTypes.T_UNSPECIFIED)
+                ArrayList<Digipeater> digis = new ArrayList<Digipeater>();
+                String[] paths = packet.getPath();
+                for(int i = 0; i < paths.length; i++)
                 {
-                    InformationField aprsData = aprs.getAprsInformation();
-                    if ( aprsData != null) 
+                    digis.add(new Digipeater(paths[i]));
+                }
+                APRSPacket aprs = Parser.parseBody(packet.getSourceCallsign(), packet.getDestinationCallsign(), digis, packet.getPayload());
+                if (aprs.isAprs())
+                {
+                    if (aprs.getType() != APRSTypes.T_UNSPECIFIED)
                     {
-                        JSONObject aprsJSON = new JSONObject();
-                        aprsJSON.put("source", packet.getSourceCallsign());
-                        aprsJSON.put("destination", packet.getDestinationCallsign());
-                        if (packet.getPath() != null)
-                            aprsJSON.put("path", new JSONArray(packet.getPath()));
-                        aprsJSON.put("comment", aprsData.getComment());
-                        aprsJSON.put("type", aprs.getType());
-                        aprsJSON.put("action", "APRS");
+                        InformationField aprsData = aprs.getAprsInformation();
+                        if ( aprsData != null) 
+                        {
+                            JSONObject aprsJSON = new JSONObject();
+                            aprsJSON.put("source", packet.getSourceCallsign());
+                            aprsJSON.put("destination", packet.getDestinationCallsign());
+                            if (packet.getPath() != null)
+                                aprsJSON.put("path", new JSONArray(packet.getPath()));
+                            aprsJSON.put("comment", aprsData.getComment());
+                            aprsJSON.put("type", aprs.getType());
+                            aprsJSON.put("action", "APRS");
 
-                        if (aprsData instanceof PositionPacket)
-                        {
-                            PositionPacket posData = ((PositionPacket)aprsData);
-                            Position position = posData.getPosition();
-                            aprsJSON.put("latitude", position.getLatitude());
-                            aprsJSON.put("longitude", position.getLongitude());
-                            aprsJSON.put("altitude", position.getAltitude());
+                            if (aprsData instanceof PositionPacket)
+                            {
+                                PositionPacket posData = ((PositionPacket)aprsData);
+                                Position position = posData.getPosition();
+                                aprsJSON.put("latitude", position.getLatitude());
+                                aprsJSON.put("longitude", position.getLongitude());
+                                aprsJSON.put("altitude", position.getAltitude());
+                            }
+                            if (aprsData instanceof ObjectPacket)
+                            {
+                                ObjectPacket objectPacket = ((ObjectPacket)aprsData);
+                                Position position = objectPacket.getPosition();
+                                aprsJSON.put("latitude", position.getLatitude());
+                                aprsJSON.put("longitude", position.getLongitude());
+                                aprsJSON.put("altitude", position.getAltitude());
+                            }
+                            broadcastJSONObject(aprsJSON);
+                            addHistory(aprsJSON);
                         }
-                        if (aprsData instanceof ObjectPacket)
-                        {
-                            ObjectPacket objectPacket = ((ObjectPacket)aprsData);
-                            Position position = objectPacket.getPosition();
-                            aprsJSON.put("latitude", position.getLatitude());
-                            aprsJSON.put("longitude", position.getLongitude());
-                            aprsJSON.put("altitude", position.getAltitude());
-                        }
-                        broadcastJSONObject(aprsJSON);
-                        addHistory(aprsJSON);
                     }
                 }
+            } catch (Exception e) {
+                //e.printStackTrace(System.err);
             }
-        } catch (Exception e) {
-            //e.printStackTrace(System.err);
         }
     }
 
