@@ -18,7 +18,7 @@ public class TerminalLink implements AX25PacketListener
         this.sessions = new HashMap<String, TerminalLinkSession>();
         this.listeners = new ArrayList<TerminalLinkListener>();
         this.kClient = kClient;
-        this.callsign = callsign;
+        this.callsign = callsign.toUpperCase();
         this.kClient.addAX25PacketListener(this);
     }
     

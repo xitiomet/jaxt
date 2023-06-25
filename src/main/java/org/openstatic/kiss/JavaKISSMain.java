@@ -214,7 +214,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                     if (tSetup.optString("type","").equals("process"))
                     {
                         JSONArray command = tSetup.optJSONArray("execute");
-                        ArrayList<String> commandArray = new ArrayList<String>();
+                        final ArrayList<String> commandArray = new ArrayList<String>();
                         for(int i = 0; i < command.length(); i++)
                         {
                             commandArray.add(command.getString(i));
@@ -224,12 +224,9 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                             @Override
                             public void onTerminalLinkSession(final TerminalLinkSession session) 
                             {
-                                JSONArray command = tSetup.optJSONArray("execute");
-                                ArrayList<String> commandArray = new ArrayList<String>();
-                                
                                 ProcessBuilder prb = new ProcessBuilder(commandArray.toArray(new String[commandArray.size()]));                        
                                 session.setHandler(new ProcessTerminalLinkSessionHandler(prb));
-                                JavaKISSMain.logAppend("main.log", "[TERMINAL " + key + "] " + session.getRemoteCallsign() + " " + commandArray.stream().collect(Collectors.joining(" ")));
+                                JavaKISSMain.logAppend("main.log", "[TERMINAL " + session.getTerminalCallsign() + "] " + session.getRemoteCallsign() + " " + commandArray.stream().collect(Collectors.joining(" ")));
                             }
                     
                         });
@@ -431,6 +428,16 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             JavaKISSMain.logAppend("main.log", "[POST ERROR] " + url);
             log(e);
         }
+    }
+
+    private static String[] JSONArrayToStringArray(JSONArray arry)
+    {
+        String[] args = new String[arry.length()];
+        for (int i = 0; i < arry.length(); i++)
+        {
+            args[i] = arry.getString(i);
+        }
+        return args;
     }
 
     @Override

@@ -4,3 +4,4 @@ target/
 dependency-reduced-pom.xml
 jaxt-logs/
 upload.sh
+commands.json

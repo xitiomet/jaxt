@@ -47,6 +47,11 @@ public class TerminalLinkSession implements Runnable
         this.handler.onConnect(this);
     }
     
+    public String getTerminalCallsign()
+    {
+        return this.link.getCallsign();
+    }
+
     public String getRemoteCallsign()
     {
         return this.callsign;

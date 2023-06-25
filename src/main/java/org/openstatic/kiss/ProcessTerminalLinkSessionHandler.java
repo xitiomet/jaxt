@@ -12,13 +12,12 @@ public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHan
     private Process process;
     private PrintWriter pw;
     private BufferedReader std_br;
-    private BufferedReader err_br;
     private TerminalLinkSession session;
     private Thread thread;
 
     public ProcessTerminalLinkSessionHandler(ProcessBuilder builder)
     {
-        this.processBuilder = builder;
+        this.processBuilder = builder.redirectErrorStream(true);
     }
 
     @Override
@@ -46,10 +45,6 @@ public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHan
                 {
                     sb.append((char) std_br.read());
                 }
-                while (err_br.ready())
-                {
-                    sb.append((char) err_br.read());
-                }
                 if (sb.length() > 0)
                 {
                     String line = sb.toString().replaceAll("(?<!\r)\n", "\r\n");
@@ -70,10 +65,8 @@ public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHan
         {
             this.process = this.processBuilder.start();
             InputStream is = this.process.getInputStream();
-            InputStream es = this.process.getErrorStream();
             OutputStream os = this.process.getOutputStream();
             this.std_br = new BufferedReader(new InputStreamReader(is));
-            this.err_br = new BufferedReader(new InputStreamReader(es));
             this.pw = new PrintWriter(os);
             this.thread = new Thread(this);
             this.thread.start();

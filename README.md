@@ -17,7 +17,9 @@ Java AX25 Tool: A Java KISS TNC Client implementation
  -?,--help                  Shows help
  -a,--api <arg>             Enable API Web Server, and specify port
                             (Default: 8101)
- -d,--destination <arg>     Destination callsign (test payload)
+ -c,--commads <arg>         Specify commands.json file location for web
+                            terminal
+ -d,--destination <arg>     Destination callsign (for test payload)
  -f,--config-file <arg>     Specify config file (.json)
  -h,--host <arg>            Specify TNC host (Default: 127.0.0.1)
  -l,--logs <arg>            Enable Logging, and optionally specify a
@@ -25,7 +27,7 @@ Java AX25 Tool: A Java KISS TNC Client implementation
  -m,--payload <arg>         Payload string to send on test interval.
                             {{ts}} for timestamp, {{seq}} for sequence.
  -p,--port <arg>            KISS Port (Default: 8100)
- -s,--source <arg>          Source callsign (test payload)
+ -s,--source <arg>          Set the default source callsign.
  -t,--test <arg>            Send test packets (optional parameter interval
                             in seconds, default is 10 seconds)
  -v,--verbose               Shows Packets
@@ -143,10 +145,11 @@ NOTE: If you plan to make your JAXT instance internet available, its recommended
 
 * /jaxt/api/settings/ - Retrieve current JAXT settings. Must include "apiPassword" which is excluded from the response for security reasons.
 
-### Terminal hosting
+### SABM Terminal Server (host your own BBS)
 
-JAXT supports SABM connections using programs like EasyTerm. You can specify any program to be launched
-upon connection and the program's STDIN, STDOUT, and STDERR will be connected to the remote host.
+JAXT supports inbound SABM connections using programs like EasyTerm. You can specify any program 
+to be launched upon connection and the program's STDIN, STDOUT, and STDERR will be connected to 
+the remote host.
 
 For example if you wanted to make a bash terminal available (not a good idea)
 ```bash
@@ -158,3 +161,45 @@ Lets say you made a python script for a BBS instead
 $ jaxt -z MYCALL-4 /usr/bin/python,/home/me/myscript.py
 ```
 NOTE: commas are used to seperate parameters after the command instead of spaces (as they would be treated as arguments for jaxt)
+
+### Web Terminal
+
+![](https://openstatic.org/projects/jaxt/jaxt-simple-wt.png))
+
+For remote control of JAXT, there is a web terminal in the top bar of the web interface.
+
+![](https://openstatic.org/projects/jaxt/jaxt-wt.png)
+
+This web terminal is pretty simple, but can be extended with your own commands. It also provides
+a terminal client to your TNC, this will allow you to connect to remote radio BBS's and other services.
+
+$ connect bbs-1
+
+(this will start sending out SABM messages to bbs-1 waiting for a UA response, once the responce is received a connection is formed)
+
+### Web Terminal Commands
+
+To allow customization of the web terminal you can add your own commands using a commands.json file (specified using -c)
+Each entry's key should be the command the user will type into the terminal, "description" is used for the "help" command,
+and "execute" is what should be run at the OS level. Be careful with this feature, security can be jeapordized!
+
+"ignoreExtraArgs" can be used to make sure nothing extra can be passed to the os level command.
+
+```json
+{
+  "reclist":{
+    "execute": ["arecord","-l"],
+    "description": "List Recording devices",
+    "ignoreExtraArgs": true
+  },
+  "lsusb":{
+    "execute": ["lsusb"],
+    "description": "List USB devices",
+    "ignoreExtraArgs": true
+  },
+  "pidof":{
+    "execute": ["pidof"],
+    "description": "Get pid of running process"
+  }
+}
+```
