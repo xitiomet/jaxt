@@ -5,7 +5,7 @@ A AX.25 Command line tool, Web Interface and Java library
 This program was created because i wanted a reliable way to interface modern web programs using Websockets,
 JSON, and HTTP with AX.25 packet radio over KISS. This program can translate AX.25 frames to JSON objects and back again without any information lost. It can be configured to perform an HTTP POST on the receipt of a packet, and transmission can be initiated from an HTTP api call.
 
-![](https://openstatic.org/projects/jaxt/jaxt-web.png)
+![](https://openstatic.org/projects/jaxt/jaxt-web2.png)
 
 This program has been tested with [UZ7HO's Soundmodem](https://uz7.ho.ua/packetradio.htm), [QtSoundmodem](https://www.cantab.net/users/john.wiseman/Documents/QtSoundModem.html) and [DireWolf](https://github.com/wb2osz/direwolf)
 
@@ -75,7 +75,7 @@ Java AX25 Tool: A Java KISS TNC Client implementation
  ```
  If you would like automatic persistent settings, save your config file as ".jaxt.json" in your home directory. JAXT will look for this file when no config file is specified. Or use the command line option "-f ~/.jaxt.json" to create this file automatically with the settings from the command line.
 
- ### Logging
+### Logging
 
 In the "logPath" (which defaults to the current directory) you will find "main.log", "exceptions.log", "rx.json" and "tx.json"
 

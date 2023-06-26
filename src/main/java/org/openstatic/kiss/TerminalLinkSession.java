@@ -88,13 +88,9 @@ public class TerminalLinkSession implements Runnable
         cArray.put("C");
         jPacket.put("control", cArray);
         AX25Packet packet = new AX25Packet(jPacket);
-        try
-        {
-            this.remoteReceiveReady = false;
-            this.lastTxAt = System.currentTimeMillis();
-            this.pendingPacket[packet.getSendModulus()] = packet;
-            this.link.getKISSClient().send(packet);
-        } catch (Exception e) {}
+        this.remoteReceiveReady = false;
+        this.pendingPacket[packet.getSendModulus()] = packet;
+        this.transmit(packet);
     }
 
     public void disconnect()
@@ -107,10 +103,7 @@ public class TerminalLinkSession implements Runnable
         cArray.put("C");
         jPacket.put("control", cArray);
         AX25Packet packet = new AX25Packet(jPacket);
-        try
-        {
-            this.link.getKISSClient().send(packet);
-        } catch (Exception e) {}
+        this.transmit(packet);
         this.handleDisconnect();
     }
 
@@ -155,10 +148,7 @@ public class TerminalLinkSession implements Runnable
             respCtrl.put("R");
             jPacket.put("control",respCtrl);
             AX25Packet pr = new AX25Packet(jPacket);
-            try
-            {
-                TerminalLinkSession.this.link.getKISSClient().send(pr);
-            } catch (Exception tex) {}
+            this.transmit(pr);
         }
 
         // Numbered information frame
@@ -181,10 +171,7 @@ public class TerminalLinkSession implements Runnable
             respCtrl.put("R" + String.valueOf(this.rxModulus));
             respCtrl.put("R");
             AX25Packet pr = AX25Packet.buildResponse(packet,respCtrl);
-            try
-            {
-                this.link.getKISSClient().send(pr);
-            } catch (Exception e) {}
+            this.transmit(pr);
         }
 
         // Received Ready
@@ -197,10 +184,7 @@ public class TerminalLinkSession implements Runnable
                 respCtrl.put("RR");
                 respCtrl.put("R" + String.valueOf(this.rxModulus));
                 AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
-                try
-                {
-                    this.link.getKISSClient().send(pr);
-                } catch (Exception e) {}
+                this.transmit(pr);
             } else if (packet.controlContains("R") && !this.remoteReceiveReady) {
                 // reset our flag and send more packets when client responds with a RR
                 this.txModulus = packet.getReceiveModulus();
@@ -234,6 +218,18 @@ public class TerminalLinkSession implements Runnable
         return System.currentTimeMillis() - this.lastRxAt;
     }
 
+    private void transmit(AX25Packet packet)
+    {
+        if (this.link != null)
+        {
+            try
+            {
+                this.link.getKISSClient().send(packet);
+                this.lastTxAt = System.currentTimeMillis();
+            } catch (Exception e) {}
+        }
+    }
+
     @Override
     public void run()
     {
@@ -254,7 +250,7 @@ public class TerminalLinkSession implements Runnable
                         respCtrl.put("R");
                         jPacket.put("control",respCtrl);
                         AX25Packet pr = new AX25Packet(jPacket);
-                        TerminalLinkSession.this.link.getKISSClient().send(pr);
+                        TerminalLinkSession.this.transmit(pr);
                     } else {
                         // switch over to fully ready mode SABM complete
                         this.sabmComplete = true;
@@ -271,8 +267,7 @@ public class TerminalLinkSession implements Runnable
                             // ok it was sent 10 seconds ago, lets try again
                             if (this.lastTxAge() > 10000)
                             {
-                                this.link.getKISSClient().send(this.pendingPacket[this.txModulus]);
-                                this.lastTxAt = now;
+                                this.transmit(this.pendingPacket[this.txModulus]);
                             }
                         } else {
 
