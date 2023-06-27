@@ -41,7 +41,7 @@ const connectApp = {
     myInterval: null,
     commandOnDeck: null,
     remoteReceiveNotReady: false,
-    everyTwoSeconds: () => {
+    everyFiveSeconds: () => {
         if (!connectApp.sabmComplete)
         {
             sendEvent({
@@ -67,7 +67,7 @@ const connectApp = {
         connectApp.remoteReceiveNotReady = true;
         term.writeln("(ctrl+c will end this session)");
         term.write("Connecting to " + connectApp.destCallsign + "....");
-        connectApp.myInterval = setInterval(connectApp.everyTwoSeconds,2000);
+        connectApp.myInterval = setInterval(connectApp.everyFiveSeconds,5000);
     },
     handleCommand: (command) => {
         connectApp.commandOnDeck = command;
@@ -92,11 +92,13 @@ const connectApp = {
                 term.write(packet.payload);
                 connectApp.rxMod = modIncreased(packetRxMod);
             }
-            sendEvent({
-                "source": sourceCallsign,
-                "destination": connectApp.destCallsign,
-                "control": ["RR","R","R" + connectApp.rxMod]
-            });
+            setTimeout(() => {
+                sendEvent({
+                    "source": sourceCallsign,
+                    "destination": connectApp.destCallsign,
+                    "control": ["RR","R","R" + connectApp.rxMod]
+                });
+            },1500);
         }
         if (packet.control.includes('RR')) 
         {
