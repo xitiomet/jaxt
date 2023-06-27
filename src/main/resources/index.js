@@ -53,7 +53,7 @@ function doConsoleWindow()
 
 function doTxWindow()
 {
-    var myWindow = popupWindow('tx.html?apiPassword=' + encodeURIComponent(document.getElementById('password').value), "Transmit", 455, 335);
+    var myWindow = popupWindow('tx.html?termAuth=' + encodeURIComponent(termAuth), "Transmit", 455, 335);
 }
 
 function sendEvent(wsEvent)

@@ -3,7 +3,7 @@
     <script src="jquery.min.js"></script>
     <script type="text/javascript">
         var txCount = 0;
-        var apiPassword = "";
+        var termAuth = "";
 
         function getParameterByName(name, url = window.location.href) 
         {
@@ -49,7 +49,7 @@
                 "control": ["UI","C"],
                 "path": path,
                 "payload": payload.replace('{{tx}}', (txCountTotal - txCount) + 1),
-                "apiPassword": apiPassword
+                "termAuth": termAuth
             };
             postJSON("jaxt/api/transmit/", 
                     txCode,
@@ -91,9 +91,9 @@
 
         function getSettings()
         {
-            apiPassword = getParameterByName('apiPassword');
+            termAuth = getParameterByName('termAuth');
             $.ajax({
-                url: "jaxt/api/settings/?apiPassword=" + apiPassword,
+                url: "jaxt/api/settings/?termAuth=" + termAuth,
                 type: 'GET',
                 dataType: 'json',
                 success: (data) => {

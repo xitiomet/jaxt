@@ -421,7 +421,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     //System.err.println("Path: " + target);
                     JSONObject response = new JSONObject();
                     JSONObject requestPost = readJSONObjectPOST(request);
-                    if (JavaKISSMain.settings.optString("apiPassword","").equals(requestPost.optString("apiPassword","")))
+                    if (JavaKISSMain.settings.optString("apiPassword","").equals(requestPost.optString("apiPassword","")) || APIWebServer.instance.validateTermAuth(requestPost.optString("termAuth",null)))
                     {       
                         try {
                             if (target.equals("/transmit/"))
@@ -434,7 +434,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                             x.printStackTrace(System.err);
                         }
                     } else {
-                        response.put("error", "Invalid apiPassword!");
+                        response.put("error", "Invalid apiPassword or termAuth!");
                     }
                     httpServletResponse.getWriter().println(response.toString());
         }
