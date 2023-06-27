@@ -69,7 +69,10 @@ window.onresize = function() {
 function prompt(term)
 {
     command = '';
-    term.write('\r\n$ ');
+    if (sourceCallsign == "")
+       term.write('\r\n$ ');
+    else
+       term.write('\r\n\x1B[0;93m' + sourceCallsign + '\x1B[0m $');
 }
 
 var commands = {
@@ -217,9 +220,7 @@ function runFakeTerminal()
     else
         term.write('Your callsign is NOT set!\r\n');
     term._initialized = true;
-    term.prompt = () => {
-        term.write('\r\n$ ');
-    };
+    term.prompt = () => { prompt(term); };
     prompt(term);
 
     term.onData(e => {
