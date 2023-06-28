@@ -168,7 +168,7 @@ NOTE: commas are used to seperate parameters after the command instead of spaces
 
 For remote control of JAXT, there is a web terminal in the top bar of the web interface.
 
-![](https://openstatic.org/projects/jaxt/jaxt-wt.png)
+![](https://openstatic.org/projects/jaxt/jaxt-term2.png)
 
 This web terminal is pretty simple, but can be extended with your own commands. It also provides
 a terminal client to your TNC, this will allow you to connect to remote radio BBS's and other services.
