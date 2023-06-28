@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.stream.Collectors;
 
 public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHandler, Runnable
 {
@@ -58,6 +59,7 @@ public class ProcessTerminalLinkSessionHandler implements TerminalLinkSessionHan
                 dr.printStackTrace(System.err);
             }
         }
+        JavaKISSMain.logAppend("main.log", "[TERMINAL ENDED " + session.getTerminalCallsign() + "] " + session.getRemoteCallsign() + " " + this.processBuilder.command().stream().collect(Collectors.joining(" ")));
         if (!wasKilled)
         {
             this.session.disconnect();

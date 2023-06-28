@@ -113,6 +113,10 @@ function setupWebsocket()
                 console.log("Receive: " + e.data);
             }
             var jsonObject = JSON.parse(e.data);
+            if (jsonObject.hasOwnProperty("hostname"))
+            {
+                document.getElementById('hostname').innerHTML = jsonObject.hostname;
+            }
             if (jsonObject.hasOwnProperty("action"))
             {
                 var action = jsonObject.action;

@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.stream.Collectors;
 
 public class APITermProcessHandler implements Runnable
 {
@@ -58,6 +59,7 @@ public class APITermProcessHandler implements Runnable
     {
         try
         {
+            JavaKISSMain.logAppend("main.log", "[PROCESS STARTED] " + this.processBuilder.command().stream().collect(Collectors.joining(" ")));
             while(this.process.isAlive() || std_br.ready())
             {
                 try
@@ -80,6 +82,8 @@ public class APITermProcessHandler implements Runnable
         } catch (Exception lpe) {
             lpe.printStackTrace(System.err);
         }
+        JavaKISSMain.logAppend("main.log", "[PROCESS ENDED] " + this.processBuilder.command().stream().collect(Collectors.joining(" ")));
+
         if (!wasKilled)
             APIWebServer.instance.promptTerm(this.termId);
     }

@@ -116,6 +116,8 @@ public class APIWebServer implements AX25PacketListener, Runnable
         authJsonObject.put("kissConnected", APIWebServer.instance.kClient.isConnected());
         authJsonObject.put("txDisabled", JavaKISSMain.settings.optBoolean("txDisabled", false));
         authJsonObject.put("availableHistory", APIWebServer.instance.packetHistory.size());
+        authJsonObject.put("hostname", JavaKISSMain.settings.optString("hostname", "JAXT"));
+        authJsonObject.put("source", JavaKISSMain.settings.optString("source", null));
         session.getRemote().sendStringByFuture(authJsonObject.toString());
     }
 
@@ -356,6 +358,10 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     sessionProperties.put("auth", true);
                     sessionProperties.put("termAuth", termAuth);
                     APIWebServer.sendAuthOk(wssession, termAuth);
+                } else {
+                    JSONObject hostJsonObject = new JSONObject();
+                    hostJsonObject.put("hostname", JavaKISSMain.settings.optString("hostname", "JAXT"));
+                    session.getRemote().sendStringByFuture(hostJsonObject.toString());
                 }
                 APIWebServer.instance.sessionProps.put(wssession, sessionProperties);
             } else {

@@ -10,12 +10,16 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Enumeration;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -198,6 +202,10 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                     JavaKISSMain.logsFolder.mkdirs();
                 }
             }
+            if (!settings.has("hostname"))
+            {
+                settings.put("hostname", getLocalHostname());
+            }
             KISSClient kClient = new KISSClient(settings.optString("host"), settings.optInt("port",8100));
             kClient.setTxDisabled(settings.optBoolean("txDisabled", false));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
@@ -226,7 +234,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                             {
                                 ProcessBuilder prb = new ProcessBuilder(commandArray.toArray(new String[commandArray.size()]));                        
                                 session.setHandler(new ProcessTerminalLinkSessionHandler(prb));
-                                JavaKISSMain.logAppend("main.log", "[TERMINAL " + session.getTerminalCallsign() + "] " + session.getRemoteCallsign() + " " + commandArray.stream().collect(Collectors.joining(" ")));
+                                JavaKISSMain.logAppend("main.log", "[TERMINAL STARTED " + session.getTerminalCallsign() + "] " + session.getRemoteCallsign() + " " + commandArray.stream().collect(Collectors.joining(" ")));
                             }
                     
                         });
@@ -450,5 +458,79 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     public void onKISSDisconnect(InetSocketAddress host)
     {
         JavaKISSMain.logAppend("main.log", "[KISS Disconnected] " + host.toString());
+    }
+
+    public static String shellExec(String cmd[])
+    {
+        try
+        {
+            Process cmdProc = Runtime.getRuntime().exec(cmd);
+            cmdProc.waitFor();
+            return readStreamToString(cmdProc.getInputStream());
+        } catch (Exception e) {
+           
+        }
+        return null;
+    }
+
+    public static String readStreamToString(InputStream is)
+    {
+        String result = "";
+        try
+        {
+            java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+            result = s.hasNext() ? s.next() : "";
+            s.close();
+        } catch (Exception e) {}
+        return result;
+    }
+
+    public static String getLocalHostname()
+    {
+        String returnValue = "";
+        Map<String, String> env = System.getenv();
+        if (env.containsKey("COMPUTERNAME"))
+        {
+            returnValue = env.get("COMPUTERNAME");
+        } else if (env.containsKey("HOSTNAME")) {
+            returnValue = env.get("HOSTNAME");
+        } else {
+            String hostnameCommand = shellExec(new String[] {"hostname"});
+            if (hostnameCommand != null)
+            {
+                String hostname = hostnameCommand.trim();
+                if (!"".equals(hostname))
+                    returnValue = hostname;
+            }
+        }
+        if ("".equals(returnValue))
+        {
+            try
+            {
+                for(Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces(); n.hasMoreElements() && "".equals(returnValue);)
+                {
+                    NetworkInterface ni = n.nextElement();
+                    for(Enumeration<InetAddress> e = ni.getInetAddresses(); e.hasMoreElements() && "".equals(returnValue);)
+                    {
+                        InetAddress ia = e.nextElement();
+                        if (!ia.isLoopbackAddress() && ia.isSiteLocalAddress())
+                        {
+                            String hostname = ia.getHostName();
+                            returnValue = hostname;
+                        }
+                    }
+                }
+
+            } catch (Exception e) {}
+        }
+        if (returnValue.contains(".local"))
+        {
+            returnValue = returnValue.replace(".local", "");
+        }
+        if (returnValue.contains(".lan"))
+        {
+            returnValue = returnValue.replace(".lan", "");
+        }
+        return returnValue;
     }
 }

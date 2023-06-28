@@ -11,6 +11,7 @@ var wsProtocol = 'ws';
 var httpUrl = '';
 var termAuth = "";
 var sourceCallsign = "";
+var jaxtHostname = "";
 var runningApp = undefined;
 
 function getParameterByName(name, url = window.location.href) 
@@ -44,22 +45,7 @@ function login()
     term.open(document.getElementById('terminal')); 
     term.loadAddon(fitAddon);
     fitStuff();
-    $.ajax({
-        url: "jaxt/api/settings/?termAuth=" + termAuth,
-        type: 'GET',
-        dataType: 'json',
-        success: (data) => {
-            
-            if (data.hasOwnProperty('source'))
-            {
-                sourceCallsign = data.source;
-                if (sourceCallsign == "")
-                    sourceCallsign = null;
-            }
-            setupWebsocket();
-        },
-        error: () => { }
-    });
+    setupWebsocket();
 }
 
 window.onresize = function() {
@@ -72,7 +58,7 @@ function prompt(term)
     if (sourceCallsign == "")
        term.write('\r\n$ ');
     else
-       term.write('\r\n\x1B[0;93m' + sourceCallsign + '\x1B[0m $');
+       term.write('\r\n\x1B[0;93m' + sourceCallsign + '\x1B[0;91m@' + jaxtHostname + '\x1B[0m$ ');
 }
 
 var commands = {
@@ -214,6 +200,13 @@ function runFakeTerminal()
     if (term._initialized) {
       return;
     }
+    term.write('     ____.  _____  ____  ______________\r\n');
+    term.write('    |    | /  _  \\ \\   \\/  /\\__    ___/\r\n');
+    term.write('    |    |/  /_\\  \\ \\     /   |    |   \r\n');
+    term.write('/\\__|    /    |    \\/     \\   |    |   \r\n');
+    term.write('\\________\\____|__  /___/\\  \\  |____|   \r\n');
+    term.write('                 \\/      \\_/           \r\n');
+    term.write('\r\n');
     term.write('Welcome to the JAXT terminal, type "help" for a list of commands.\r\n');
     if (sourceCallsign != "")
         term.write('Your callsign is set to \"' + sourceCallsign + '\"\r\n');
@@ -315,6 +308,10 @@ function setupWebsocket()
             {
                 var action = jsonObject.action;
                 if (action == 'authOk') {
+                    sourceCallsign = jsonObject.source;
+                    if (sourceCallsign == "")
+                        sourceCallsign = null;
+                    jaxtHostname = jsonObject.hostname;
                     runFakeTerminal();
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
@@ -327,7 +324,8 @@ function setupWebsocket()
                 } else if (action == 'commands') {
                     Object.entries(jsonObject.commands).forEach((entry) => {
                         const [key, value] = entry;
-                        value.remote = true;
+                        if (value.hasOwnProperty('execute'))
+                            value.remote = true;
                         commands[key] = value;
                     });
                 } else if (action == 'prompt') {
