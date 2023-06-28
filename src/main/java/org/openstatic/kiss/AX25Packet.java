@@ -36,7 +36,9 @@ public class AX25Packet
 	public static final int AX25_CONTROL_DISC              = 0b01010011;
 	public static final int AX25_CONTROL_SABM              = 0b00111111;
 	public static final int AX25_CONTROL_SABME             = 0b01111111;
-	public static final int AX25_CONTROL_UA                = 0b01100011;
+	public static final int AX25_CONTROL_UA_F0             = 0b01100011;
+	public static final int AX25_CONTROL_UA_F1             = 0b01110011;
+
 
 	public static final int AX25_CONTROL_DM                = 0b00001111;
 	public static final int AX25_CONTROL_FRMR              = 0b10000111;
@@ -411,7 +413,12 @@ public class AX25Packet
 			} else if (item.equals("DISC")) {
 				control = AX25_CONTROL_DISC;
 			} else if (item.equals("UA")) {
-				control = AX25_CONTROL_UA;
+				if (JSONArrayContains(array, "F"))
+				{
+					control = AX25_CONTROL_UA_F1;
+				} else {
+					control = AX25_CONTROL_UA_F0;
+				}
 			} else if (item.equals("DM")) {
 				control = AX25_CONTROL_DM;
 			} else if (item.equals("FRMR")) {
@@ -524,10 +531,12 @@ public class AX25Packet
 				ra.put("FRMR");
 				ra.put("F");
 			}
-			if (filtered == AX25_CONTROL_UA)
+			if (filtered == AX25_CONTROL_UA_F1)
 			{
 				ra.put("UA");
 				ra.put("F");
+			} else if (filtered == AX25_CONTROL_UA_F0) {
+				ra.put("UA");
 			}
 			if (filtered == AX25_CONTROL_UI)
 			{

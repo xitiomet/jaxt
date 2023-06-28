@@ -41,6 +41,11 @@ public class TerminalLinkSession implements Runnable
         this.monitorThread.start();
     }
 
+    public boolean isAlive()
+    {
+        return this.link != null && this.monitorThread.isAlive();
+    }
+
     public void setHandler(TerminalLinkSessionHandler handler)
     {
         this.handler = handler;
@@ -100,6 +105,7 @@ public class TerminalLinkSession implements Runnable
         jPacket.put("destination", this.callsign);
         JSONArray cArray = new JSONArray();
         cArray.put("DISC");
+        cArray.put("F");
         cArray.put("C");
         jPacket.put("control", cArray);
         AX25Packet packet = new AX25Packet(jPacket);
@@ -145,6 +151,7 @@ public class TerminalLinkSession implements Runnable
             jPacket.put("destination", this.callsign);
             JSONArray respCtrl = new JSONArray();
             respCtrl.put("UA");
+            respCtrl.put("F");
             respCtrl.put("R");
             jPacket.put("control",respCtrl);
             AX25Packet pr = new AX25Packet(jPacket);
@@ -247,6 +254,7 @@ public class TerminalLinkSession implements Runnable
                         jPacket.put("destination", this.callsign);
                         JSONArray respCtrl = new JSONArray();
                         respCtrl.put("UA");
+                        respCtrl.put("F");
                         respCtrl.put("R");
                         jPacket.put("control",respCtrl);
                         AX25Packet pr = new AX25Packet(jPacket);

@@ -58,8 +58,15 @@ public class TerminalLink implements AX25PacketListener
             {
                 if (packet.controlContains("SABM"))
                 {
+                    boolean newSessionNeeded = false;
                     TerminalLinkSession session = this.sessions.get(packet.getSourceCallsign());
                     if (session == null)
+                    {
+                        newSessionNeeded = true;
+                    } else if (!session.isAlive()) {
+                        newSessionNeeded = true;
+                    }
+                    if (newSessionNeeded)
                     {
                         session = new TerminalLinkSession(this, packet.getSourceCallsign());
                         final TerminalLinkSession fSession = session;
@@ -72,6 +79,9 @@ public class TerminalLink implements AX25PacketListener
                 {
                     JSONArray respCtrl = new JSONArray();
                     respCtrl.put("UA");
+                    if (packet.controlContains("P"))
+                        respCtrl.put("F");
+                    respCtrl.put("R");
                     AX25Packet pr = AX25Packet.buildResponse(packet, respCtrl);
                     this.kClient.send(pr);
                     TerminalLinkSession session = this.sessions.get(packet.getSourceCallsign());
