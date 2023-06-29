@@ -112,6 +112,11 @@ const connectApp = {
         }
         if (packet.control.includes('DISC'))
         {
+            sendEvent({
+                "source": sourceCallsign,
+                "destination": connectApp.destCallsign,
+                "control": ["UA","F","R"]
+            });
             term.writeln("(session ended by " + connectApp.destCallsign + ")");
             if (connectApp.myInterval != null)
                 clearInterval(connectApp.myInterval);

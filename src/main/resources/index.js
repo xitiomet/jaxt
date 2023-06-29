@@ -69,6 +69,18 @@ function sendEvent(wsEvent)
     }
 }
 
+function clearHistory()
+{
+    if (confirm("Clear Packet History?"))
+    {
+        sendEvent({
+            "action": "clearHistory"
+        });
+        var console = document.getElementById('console');
+        console.innerHTML = '';
+    }
+}
+
 function doAuth()
 {
     sendEvent({
@@ -123,6 +135,7 @@ function setupWebsocket()
                 if (action == 'authOk') {
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('console').style.display = 'block';
+                    document.getElementById('clearButton').style.display = 'inline-block';
                     if (!jsonObject.txDisabled)
                     {
                         document.getElementById('txButton').style.display = 'inline-block';
@@ -140,7 +153,7 @@ function setupWebsocket()
                 } else if (action == 'kissDisconnected') {
                     updateKCS(false);
                 } else if (action == 'info') {
-                    logIt(jsonObject.text);
+                    logInfo(jsonObject);
                 } else if (action == 'APRS') {
                     logAPRS(jsonObject);
                 }
@@ -186,6 +199,25 @@ function logIt(message, color = '#BBBBBB')
     window.scrollTo(0,document.body.scrollHeight);
 }
 
+function logInfo(jsonObject, color = '#BBBBBB')
+{
+    var message = jsonObject.text;
+    var console = document.getElementById('console');
+    var d = new Date();
+    if (jsonObject.hasOwnProperty('timestamp'))
+        d = new Date(jsonObject.timestamp);
+    var preId = "info_" + d.getTime();
+    if (document.getElementById(preId) == undefined)
+    {
+        var msgSplit = message.split(/\r?\n/);
+        for (var i = 0; i < msgSplit.length; i++)
+        {
+            console.innerHTML +=  "<pre id=\"" + preId + "\" style=\"color: " + color + ";\">(INFO " + getDTString(d) + ") " + msgSplit[i] + "</pre>";
+        }
+        window.scrollTo(0,document.body.scrollHeight);
+    }
+}
+
 function cleanPayload(payload)
 {
     if (payload != undefined)
@@ -200,13 +232,17 @@ function logPacket(packet)
     var d = new Date();
     if (packet.hasOwnProperty('timestamp'))
         d = new Date(packet.timestamp);
-    var ctrlStr = "";
-    for(flag of packet.control)
+    var preId = packet.source + "_" + packet.destination + "_" + d.getTime();
+    if (document.getElementById(preId) == undefined)
     {
-        ctrlStr += " " + flag;
+        var ctrlStr = "";
+        for(flag of packet.control)
+        {
+            ctrlStr += " " + flag;
+        }
+        console.innerHTML +=  "<pre id=\"" + preId + "\">(" + packet.direction.toUpperCase() + " @ " + getDTString(d) + ") " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " [" + padString(ctrlStr,14) + " ] " + cleanPayload(packet.payload) + "</pre>";
+        window.scrollTo(0,document.body.scrollHeight);
     }
-    console.innerHTML +=  "<pre>(" + packet.direction.toUpperCase() + " @ " + getDTString(d) + ") " + padString(packet.source,9) + " > " + padString(packet.destination,9) + " [" + padString(ctrlStr,14) + " ] " + cleanPayload(packet.payload) + "</pre>";
-    window.scrollTo(0,document.body.scrollHeight);
 }
 
 
@@ -216,18 +252,22 @@ function logAPRS(jsonObject)
     var d = new Date();
     if (jsonObject.hasOwnProperty('timestamp'))
         d = new Date(packet.timestamp);
-    var line =  "<div style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": " + jsonObject.source;
-    
-    if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
+    var divId = jsonObject.source + "_" + jsonObject.type + "_" + d.getTime();
+    if (document.getElementById(divId) == undefined)
     {
-        var lat = jsonObject.latitude.toFixed(6);
-        var lon = jsonObject.longitude.toFixed(6);
-        line += " <a target=\"_blank\" href=\"https://www.google.com/maps/?q=" + lat + "," + lon + "\">" + lat + "," + lon + "</a>"
-    }
-    line += " " + jsonObject.comment + "</div>";
+        var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": " + jsonObject.source;
+        
+        if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
+        {
+            var lat = jsonObject.latitude.toFixed(6);
+            var lon = jsonObject.longitude.toFixed(6);
+            line += " <a target=\"_blank\" href=\"https://www.google.com/maps/?q=" + lat + "," + lon + "\">" + lat + "," + lon + "</a>"
+        }
+        line += " " + jsonObject.comment + "</div>";
 
-    console.innerHTML += line;
-    window.scrollTo(0,document.body.scrollHeight);
+        console.innerHTML += line;
+        window.scrollTo(0,document.body.scrollHeight);
+    }
 }
 
 window.onload = function() {

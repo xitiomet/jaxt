@@ -209,6 +209,15 @@ public class APIWebServer implements AX25PacketListener, Runnable
                         }
                         this.processes.remove(session);
                     }
+                } else if (action.equals("clearHistory")) {
+                    this.packetHistory.clear();
+                } else if (action.equals("info")) {
+                    JSONObject infoPacket = new JSONObject();
+                    infoPacket.put("action", "info");
+                    infoPacket.put("text", j.optString("text", ""));
+                    infoPacket.put("timestamp", System.currentTimeMillis());
+                    APIWebServer.instance.broadcastJSONObject(infoPacket);
+                    addHistory(infoPacket);
                 }
             }
         } else {

@@ -188,10 +188,24 @@ function runCommand(term, text)
 
 function handlePacket(packet)
 {
-    if ((runningApp != null && runningApp != undefined) && packet.destination == sourceCallsign)
+    if (packet.destination == sourceCallsign)
     {
-        //console.log("App should handle packet!");
-        runningApp.handlePacket(packet);
+        if ((runningApp != null && runningApp != undefined))
+        {
+            //console.log("App should handle packet!");
+            runningApp.handlePacket(packet);
+        } else {
+            if (packet.control.includes('DISC'))
+            {
+                setTimeout(() => {
+                    sendEvent({
+                        "source": sourceCallsign,
+                        "destination": packet.source,
+                        "control": ["UA","F","R"]
+                    });
+                },2000);
+            }
+        }
     }
 }
 

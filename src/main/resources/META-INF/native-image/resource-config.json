@@ -17,6 +17,9 @@
       "pattern":"\\Qjaxt/console-32.png\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/eraser-32.png\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/favicon.ico\\E"
     }, 
     {
