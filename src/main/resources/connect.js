@@ -98,7 +98,7 @@ const connectApp = {
                     "destination": connectApp.destCallsign,
                     "control": ["RR","R","R" + connectApp.rxMod]
                 });
-            },1500);
+            },500);
         }
         if (packet.control.includes('RR')) 
         {

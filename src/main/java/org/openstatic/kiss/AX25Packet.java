@@ -303,7 +303,17 @@ public class AX25Packet
 	{
 		return JSONArrayContains(this.control, key);
 	}
+
+	public void setTimestampNow()
+	{
+		this.setTimestamp(System.currentTimeMillis());
+	}
 	
+	public void setTimestamp(long timestamp)
+	{
+		this.timestamp = new Date(timestamp);
+	}
+
 	public Date getTimestamp()
 	{
 		return this.timestamp;

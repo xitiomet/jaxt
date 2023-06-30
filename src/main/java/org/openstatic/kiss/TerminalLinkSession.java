@@ -288,6 +288,7 @@ public class TerminalLinkSession implements Runnable
                         {
                             // They didn't get it after 3 tries.
                             this.disconnect();
+                            JavaKISSMain.logAppend("main.log", "[TERMINAL ERROR] Tried to transmit 4x with no response, disconnecting");
                         }
                     }
 
@@ -295,6 +296,7 @@ public class TerminalLinkSession implements Runnable
                     if (this.lastRxAge() > 300000)
                     {
                         this.disconnect();
+                        JavaKISSMain.logAppend("main.log", "[TERMINAL ERROR] IDLE for 5m, disconnecting");
                     }
                 }
                 

@@ -230,6 +230,7 @@ public class KISSClient implements Runnable
             packet.setDirection("tx");
             packet.updatePayloadVar("{{ts}}", System.currentTimeMillis());
             packet.updatePayloadVar("{{seq}}", this.txNumber);
+            packet.setTimestampNow();
             this.send(packet.bytesWithoutCRC());
             this.listeners.forEach((l) -> l.onTransmit(packet));
         }
