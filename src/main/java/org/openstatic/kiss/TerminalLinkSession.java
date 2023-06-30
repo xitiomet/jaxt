@@ -10,11 +10,13 @@ public class TerminalLinkSession implements Runnable
 {
     private int txModulus;
     private int rxModulus;
-    private String callsign;
+    private String remoteCallsign;
+    private String linkCallsign;
     private TerminalLink link;
     private TerminalLinkSessionHandler handler;
     private LinkedBlockingQueue<String> outboundQueue;
     private boolean remoteReceiveReady;
+    private int txRetryCount;
     private long lastRxAt; // last time we received a packet
     private long lastTxAt; // last time we sent a packet
     private long lastSABMAt;
@@ -23,12 +25,14 @@ public class TerminalLinkSession implements Runnable
     private boolean connected;
     private AX25Packet[] pendingPacket;
 
-    public TerminalLinkSession(TerminalLink link, String callsign)
+    public TerminalLinkSession(TerminalLink link, String remoteCallsign)
     {
         this.link = link;
-        this.callsign = callsign;
+        this.linkCallsign = link.getCallsign();
+        this.remoteCallsign = remoteCallsign;
         this.txModulus = 0;
         this.rxModulus = 0;
+        this.txRetryCount = 0;
         this.sabmComplete = false;
         this.lastSABMAt = System.currentTimeMillis();
         this.remoteReceiveReady = false;
@@ -54,12 +58,12 @@ public class TerminalLinkSession implements Runnable
     
     public String getTerminalCallsign()
     {
-        return this.link.getCallsign();
+        return this.linkCallsign;
     }
 
     public String getRemoteCallsign()
     {
-        return this.callsign;
+        return this.remoteCallsign;
     }
 
     public void sendText(String text)
@@ -83,8 +87,8 @@ public class TerminalLinkSession implements Runnable
     private void sendIFrame(String text)
     {
         JSONObject jPacket = new JSONObject();
-        jPacket.put("source", this.link.getCallsign());
-        jPacket.put("destination", this.callsign);
+        jPacket.put("source", this.linkCallsign);
+        jPacket.put("destination", this.remoteCallsign);
         jPacket.put("payload", text);
         JSONArray cArray = new JSONArray();
         cArray.put("I");
@@ -101,8 +105,8 @@ public class TerminalLinkSession implements Runnable
     public void disconnect()
     {
         JSONObject jPacket = new JSONObject();
-        jPacket.put("source", this.link.getCallsign());
-        jPacket.put("destination", this.callsign);
+        jPacket.put("source", this.linkCallsign);
+        jPacket.put("destination", this.remoteCallsign);
         JSONArray cArray = new JSONArray();
         cArray.put("DISC");
         cArray.put("F");
@@ -147,8 +151,8 @@ public class TerminalLinkSession implements Runnable
         {
             this.lastSABMAt = System.currentTimeMillis();
             JSONObject jPacket = new JSONObject();
-            jPacket.put("source", this.link.getCallsign());
-            jPacket.put("destination", this.callsign);
+            jPacket.put("source", this.linkCallsign);
+            jPacket.put("destination", this.remoteCallsign);
             JSONArray respCtrl = new JSONArray();
             respCtrl.put("UA");
             respCtrl.put("F");
@@ -194,6 +198,7 @@ public class TerminalLinkSession implements Runnable
                 this.transmit(pr);
             } else if (packet.controlContains("R") && !this.remoteReceiveReady) {
                 // reset our flag and send more packets when client responds with a RR
+                this.txRetryCount = 0;
                 this.txModulus = packet.getReceiveModulus();
                 this.pendingPacket[this.txModulus] = null;
                 this.remoteReceiveReady = true;
@@ -250,8 +255,8 @@ public class TerminalLinkSession implements Runnable
                     if (((now - this.lastSABMAt) < 7000) && this.lastTxAge() > 2000)
                     {   //Remote is still waiting for UA
                         JSONObject jPacket = new JSONObject();
-                        jPacket.put("source", this.link.getCallsign());
-                        jPacket.put("destination", this.callsign);
+                        jPacket.put("source", this.linkCallsign);
+                        jPacket.put("destination", this.remoteCallsign);
                         JSONArray respCtrl = new JSONArray();
                         respCtrl.put("UA");
                         respCtrl.put("F");
@@ -276,9 +281,13 @@ public class TerminalLinkSession implements Runnable
                             if (this.lastTxAge() > 10000)
                             {
                                 this.transmit(this.pendingPacket[this.txModulus]);
+                                this.txRetryCount++;
                             }
-                        } else {
-
+                        }
+                        if (this.txRetryCount >= 3)
+                        {
+                            // They didn't get it after 3 tries.
+                            this.disconnect();
                         }
                     }
 
