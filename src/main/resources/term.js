@@ -61,6 +61,11 @@ function prompt(term)
        term.write('\r\n\x1B[0;93m' + sourceCallsign + '\x1B[0;91m@' + jaxtHostname + '\x1B[0m$ ');
 }
 
+function promptLength()
+{
+    return sourceCallsign.length + jaxtHostname.length + 3;
+}
+
 var commands = {
     help: {
       f: (args) => {
@@ -247,11 +252,27 @@ function runFakeTerminal()
             break;
           case '\u007F': // Backspace (DEL)
             // Do not delete the prompt
-            if (term._core.buffer.x > 2) {
+            if (term._core.buffer.x > promptLength()) 
+            {
               term.write('\b \b');
-              if (command.length > 0) {
+              if (command.length > 0) 
+              {
                 command = command.substr(0, command.length - 1);
               }
+            }
+            break;
+          case '\t':
+            if (!command.includes(' '))
+            {
+                for(cmd of Object.keys(commands))
+                {
+                    if (cmd.startsWith(command))
+                    {
+                        var finishCmd = cmd.substr(command.length);
+                        term.write(finishCmd);
+                        command += finishCmd;
+                    }
+                }
             }
             break;
           default: // Print all other characters for demo
@@ -323,8 +344,8 @@ function setupWebsocket()
                 var action = jsonObject.action;
                 if (action == 'authOk') {
                     sourceCallsign = jsonObject.source;
-                    if (sourceCallsign == "")
-                        sourceCallsign = null;
+                    if (sourceCallsign == null)
+                        sourceCallsign = "";
                     jaxtHostname = jsonObject.hostname;
                     runFakeTerminal();
                 } else if (action == 'authFail') {

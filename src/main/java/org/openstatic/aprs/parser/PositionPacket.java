@@ -82,23 +82,28 @@ public class PositionPacket extends InformationField implements java.io.Serializ
 		}
 		compressedFormat = false;
 	}
-	public PositionPacket(Position position, String comment) {
+	
+	public PositionPacket(Position position, String comment) 
+	{
 		this.position = position;
 		this.type = APRSTypes.T_POSITION;
 		this.comment = comment;
 		compressedFormat = false;
 	}
 
-	public PositionPacket(Position position, String comment, boolean msgCapable) {
+	public PositionPacket(Position position, String comment, boolean msgCapable)
+	{
 		this(position, comment);
 		canMessage = msgCapable;
 	}
 
-	public void setCompressedFormat(boolean val) {
+	public void setCompressedFormat(boolean val)
+	{
 		compressedFormat = val;
 	}
 
-	public boolean getCompressedFormat() {
+	public boolean getCompressedFormat()
+	{
 		return compressedFormat;
 	}
 

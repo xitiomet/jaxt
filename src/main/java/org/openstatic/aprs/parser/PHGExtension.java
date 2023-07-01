@@ -57,7 +57,8 @@ public class PHGExtension extends DataExtension implements Serializable
 	}
 	
 	@Override
-	public String toSAEString() {
+	public String toSAEString() 
+	{
 		return power+" watts at "+height+" ft HAAT with "+gain+" dBi gain directed at "+directivity+" degress";
 	}
 }

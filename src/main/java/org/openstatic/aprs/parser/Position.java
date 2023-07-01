@@ -17,7 +17,8 @@ public class Position implements java.io.Serializable
 	    timestamp = new Date();
 	}
 	
-	public Position(double lat, double lon, int posAmb, char st, char sc) {
+	public Position(double lat, double lon, int posAmb, char st, char sc)
+	{
 		this.latitude = Math.round(lat * 100000) * 0.00001D;
 		this.longitude = Math.round(lon * 100000) * 0.00001D;
 		this.positionAmbiguity = posAmb;
@@ -26,7 +27,8 @@ public class Position implements java.io.Serializable
 		this.timestamp = new Date();
 	}
 	
-	public Position(double lat, double lon) {
+	public Position(double lat, double lon)
+	{
 		this.latitude = Math.round(lat * 100000) * 0.00001D;
 		this.longitude = Math.round(lon * 100000) * 0.00001D;
 		this.positionAmbiguity=0;

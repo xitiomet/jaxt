@@ -4,7 +4,8 @@ public class UnparsablePositionException extends Exception
 {
 	private static final long serialVersionUID = 1L;
 
-	public UnparsablePositionException(String ex) {
+	public UnparsablePositionException(String ex)
+	{
 		super(ex);
 	}
 }

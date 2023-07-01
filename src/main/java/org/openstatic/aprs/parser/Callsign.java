@@ -18,7 +18,8 @@ public class Callsign implements Serializable
 		}
 	}
 
-	public Callsign(byte[] data, int offset) {
+	public Callsign(byte[] data, int offset)
+	{
 		byte[] shifted = new byte[6];
 		byte ssidbyte = data[offset + 6];
 		for (int i = 0; i < 6; i++)
@@ -30,28 +31,34 @@ public class Callsign implements Serializable
 		else this.ssid = "";
 	}
 
-    public String getCallsign() {
+    public String getCallsign()
+	{
         return callsign;
     }
 
-    public void setCallsign(String callsign) {
+    public void setCallsign(String callsign)
+	{
         this.callsign = callsign.toUpperCase();
     }
 
-    public String getSsid() {
+    public String getSsid()
+	{
         return ssid;
     }
 
-    public void setSsid(String ssid) {
+    public void setSsid(String ssid)
+	{
         this.ssid = ssid;
     }
 
     @Override
-    public String toString() {
+    public String toString() 
+	{
         return callsign + (ssid == "" ? "" : "-" + ssid);
     }
 
-    public byte[] toAX25() throws IllegalArgumentException {
+    public byte[] toAX25() throws IllegalArgumentException
+	{
         byte[] callbytes = callsign.getBytes();
         byte[] ax25 = new byte[7];
 		java.util.Arrays.fill(ax25, (byte)0x40);

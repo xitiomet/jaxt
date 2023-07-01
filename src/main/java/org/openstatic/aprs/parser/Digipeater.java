@@ -8,13 +8,15 @@ public class Digipeater extends Callsign implements Serializable
 	private static final long serialVersionUID = 1L;
     private boolean used;
     
-    public Digipeater(String call) {
+    public Digipeater(String call)
+    {
         super(call.replaceAll("\\*", ""));
         if ( call.indexOf("*") >= 0 ) 
         {
             setUsed(true);
         }
     }
+    
     public Digipeater(byte[] data, int offset)
     {
 	    super(data, offset);
