@@ -70,6 +70,9 @@
   "methods":[{"name":"reference","parameterTypes":[] }]
 },
 {
+  "name":"java.security.SecureRandomParameters"
+},
+{
   "name":"org.eclipse.jetty.util.ModuleLocation",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
@@ -112,7 +115,15 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
+  "name":"sun.security.provider.DRBG",
+  "methods":[{"name":"<init>","parameterTypes":["java.security.SecureRandomParameters"] }]
+},
+{
   "name":"sun.security.provider.SHA",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"sun.security.provider.SHA2$SHA256",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 }
 ]

@@ -10,8 +10,10 @@ import org.openstatic.aprs.parser.ObjectPacket;
 import org.openstatic.aprs.parser.Parser;
 import org.openstatic.aprs.parser.Position;
 import org.openstatic.aprs.parser.PositionPacket;
+import org.openstatic.sound.SoundSystem;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,6 +25,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Arrays;
 
+import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -50,11 +53,13 @@ public class APIWebServer implements AX25PacketListener, Runnable
     private KISSClient kClient;
     private Thread pingPongThread;
     private ArrayList<JSONObject> packetHistory;
+    private SoundSystem soundSystem;
 
     protected static APIWebServer instance;
 
     public APIWebServer(KISSClient client)
     {
+        this.soundSystem = new SoundSystem();
         this.packetHistory = new ArrayList<JSONObject>();
         this.kClient = client;
         this.kClient.addAX25PacketListener(this);
@@ -211,6 +216,14 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     }
                 } else if (action.equals("clearHistory")) {
                     this.packetHistory.clear();
+                } else if (action.equals("lsaudio")) {
+                    APIWebServer.instance.soundSystem.refreshMixers();
+                    JSONObject infoPacket = new JSONObject();
+                    infoPacket.put("action", "lsaudio");
+                    infoPacket.put("recording", APIWebServer.instance.soundSystem.getRecordingDevices());
+                    infoPacket.put("playback", APIWebServer.instance.soundSystem.getPlaybackDevices());
+                    infoPacket.put("timestamp", System.currentTimeMillis());
+                    session.getRemote().sendStringByFuture(infoPacket.toString());
                 } else if (action.equals("info")) {
                     JSONObject infoPacket = new JSONObject();
                     infoPacket.put("action", "info");
@@ -285,8 +298,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
     {
         long termId = sessionProperties.optLong("termId", 0);
         JSONObject commands = sessionProperties.optJSONObject("commands", new JSONObject());
-        if (commands.has(command))
-        {
+        if (commands.has(command)) {
             JSONObject commandObject = commands.getJSONObject(command);
             ArrayList<String> commandWithArgs = new ArrayList<String>();
             if (commandObject.has("execute"))
@@ -457,9 +469,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse httpServletResponse)
                 throws ServletException, IOException {
-            httpServletResponse.setContentType("text/javascript");
-            httpServletResponse.setStatus(HttpServletResponse.SC_OK);
-            httpServletResponse.setCharacterEncoding("iso-8859-1");
+            String responseType = "text/javascript";
             String target = request.getPathInfo();
             //System.err.println("Path: " + target);
             Set<String> parameterNames = request.getParameterMap().keySet();
@@ -492,11 +502,29 @@ public class APIWebServer implements AX25PacketListener, Runnable
                             response.put(key, JavaKISSMain.settings.opt(key));
                         }
                     }
+                } else if (target.equals("/audio/")) {
+                    response.put("recording", APIWebServer.instance.soundSystem.getRecordingDevices());
+                    response.put("playback", APIWebServer.instance.soundSystem.getPlaybackDevices());
+                } else if (target.equals("/stream/")) {
+                    int devId = Integer.valueOf(request.getParameter("devId")).intValue();
+                    try
+                    {
+                        APIWebServer.instance.soundSystem.openRecordingDeviceAndWriteTo(devId, request, httpServletResponse);
+                    } catch (Exception e) {
+                        e.printStackTrace(System.err);
+                    }
+                    return;
                 }
             } else {
                 response.put("error", "Invalid apiPassword!");
             }
-            httpServletResponse.getWriter().println(response.toString());
+            if ("text/javascript".equals(responseType))
+            {
+                httpServletResponse.setContentType("text/javascript");
+                httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+                httpServletResponse.setCharacterEncoding("iso-8859-1");
+                httpServletResponse.getWriter().println(response.toString());
+            }
             //request.setHandled(true);
         }
     }

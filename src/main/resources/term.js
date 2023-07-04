@@ -13,6 +13,7 @@ var termAuth = "";
 var sourceCallsign = "";
 var jaxtHostname = "";
 var runningApp = undefined;
+var playingAudio = null;
 
 function getParameterByName(name, url = window.location.href) 
 {
@@ -106,6 +107,12 @@ var commands = {
                    'and the rest is the payload.\r\n\r\n' +
                    'Example:\r\n$ ui TARGET-1 This is some cool stuff!'
     },
+    lsaudio: {
+        f: (args) => {
+          sendEvent({"action":"lsaudio"});
+        },
+        description: 'List Audio devcies',
+    },
     source: {
       f: (args) => {
         if (args.length > 0)
@@ -134,6 +141,13 @@ var commands = {
         },
         description: 'Connect to a remote radio terminal. Example: $ connect term-5'
     },
+    listen: {
+        f: (args) => {
+            runningApp = listenApp;
+            runningApp.start(args);
+        },
+        description: 'Listen to an audio device on the system running jaxt (use lsaudio to get device number)'
+    },
     exit: {
         f: (args) => {
             window.close();
@@ -143,7 +157,7 @@ var commands = {
   };
 
 const remoteApp = {
-    start: () => {
+    start: (args) => {
 
     },
     stop: () => {
@@ -155,6 +169,35 @@ const remoteApp = {
     handleCommand: (command) => {
         sendEvent({"action": "input", "text": command});
         term.writeln('');
+    }
+};
+
+const listenApp = {
+    start: (args) => {
+        var audioUrl = "/jaxt/api/stream/?termAuth=" + encodeURIComponent(termAuth) + "&devId=" + encodeURIComponent(args[0]);
+        console.log("Streaming: " + audioUrl);
+        playingAudio = new Audio(audioUrl);
+        playingAudio.onerror = () => {
+            prompt(term);
+            runningApp = null;
+        }
+        playingAudio.play();
+        term.writeln("Streaming Audio (press ctrl-c to stop)");
+    },
+    stop: () => {
+        try
+        {
+            playingAudio.pause();
+            playingAudio.src = '';
+        } catch (err) {
+            console.log(err);
+        }
+    },
+    handlePacket: (packet) => {
+
+    },
+    handleCommand: (command) => {
+        
     }
 };
 
@@ -348,6 +391,23 @@ function setupWebsocket()
                         sourceCallsign = "";
                     jaxtHostname = jsonObject.hostname;
                     runFakeTerminal();
+                } else if (action == 'lsaudio') {
+                    var a = 0;
+                    term.writeln("-- Input --");
+                    for(devname of jsonObject.recording)
+                    {
+                        term.writeln(a + ": " + devname);
+                        a++;
+                    }
+                    term.writeln("");
+                    term.writeln("-- Output --");
+                    var b = 0;
+                    for(devname of jsonObject.playback)
+                    {
+                        term.writeln(b + ": " + devname);
+                        b++;
+                    }
+                    prompt(term);
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'kissConnected') {
