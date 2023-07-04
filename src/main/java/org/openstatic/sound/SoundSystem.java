@@ -60,7 +60,7 @@ public class SoundSystem
                 for (Line.Info li : sourceLines)
                 {
                     System.err.println(li.getLineClass().toString());
-                    //if (li.getLineClass().toString().equals("interface javax.sound.sampled.SourceDataLine"))
+                    if (li.getLineClass().toString().equals("interface javax.sound.sampled.SourceDataLine"))
                         slc++;
                 }
                 if (slc > 0)
@@ -73,7 +73,7 @@ public class SoundSystem
                 for (Line.Info li : targetLines)
                 {
                     System.err.println(li.getLineClass().toString());
-                    //if (li.getLineClass().toString().equals("interface javax.sound.sampled.TargetDataLine"))
+                    if (li.getLineClass().toString().equals("interface javax.sound.sampled.TargetDataLine"))
                         tlc++;
                 }
                 if (tlc > 0)
