@@ -146,7 +146,7 @@ var commands = {
             runningApp = listenApp;
             runningApp.start(args);
         },
-        description: 'Listen to an audio device on the system running jaxt (use lsaudio to get device number)'
+        description: 'Listen to an audio device on the system running jaxt\r\nExample: "listen 2" (use lsaudio to get device number)'
     },
     exit: {
         f: (args) => {
@@ -369,6 +369,7 @@ function setupWebsocket()
         connection = new WebSocket(wsProtocol + '://' + hostname + ':' + port + '/jaxt/');
         
         connection.onopen = function () {
+                term.writeln('WebSocket connected!');
                 doAuth();
         };
         
@@ -411,9 +412,9 @@ function setupWebsocket()
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'kissConnected') {
-                    term.writeln("WARNING: KISS Connected");
+                    //term.writeln("WARNING: KISS Connected");
                 } else if (action == 'kissDisconnected') {
-                    term.writeln("WARNING: Disconnected");
+                    //term.writeln("WARNING: Disconnected");
                 } else if (action == 'write') {
                     term.write(jsonObject.data);
                 } else if (action == 'commands') {

@@ -152,6 +152,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 if (validateTermAuth(termAuth))
                 {
                     sessionProperties.put("auth", true);
+                    sessionProperties.put("termAuth", termAuth);
                     sendAuthOk(session,termAuth);
                 }
             }
@@ -630,7 +631,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 pingJSON.put("action", "ping");
                 pingJSON.put("timestamp", System.currentTimeMillis());
                 broadcastJSONObject(pingJSON);
-                Thread.sleep(60000);
+                Thread.sleep(10000);
             } catch (Exception e) {
 
             }

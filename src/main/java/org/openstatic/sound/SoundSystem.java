@@ -49,17 +49,17 @@ public class SoundSystem
         for (Mixer.Info mixerInfo : mixers)
         {
             Mixer m = AudioSystem.getMixer(mixerInfo);
-            System.err.println(mixerInfo.getName());
-            System.err.println(mixerInfo.getDescription());
+            //System.err.println(mixerInfo.getName());
+            //System.err.println(mixerInfo.getDescription());
             try
             {
                 
                 Line.Info[] sourceLines = m.getSourceLineInfo();
-                System.err.println ("Source Lines: " + String.valueOf(sourceLines.length));
+                //System.err.println ("Source Lines: " + String.valueOf(sourceLines.length));
                 int slc = 0;
                 for (Line.Info li : sourceLines)
                 {
-                    System.err.println(li.getLineClass().toString());
+                    //System.err.println(li.getLineClass().toString());
                     if (li.getLineClass().toString().equals("interface javax.sound.sampled.SourceDataLine"))
                         slc++;
                 }
@@ -68,11 +68,11 @@ public class SoundSystem
                     outputMixers.add(mixerInfo);
                 }
                 Line.Info[] targetLines = m.getTargetLineInfo();
-                System.err.println ("Target Lines: " + String.valueOf(targetLines.length));
+                //System.err.println ("Target Lines: " + String.valueOf(targetLines.length));
                 int tlc = 0;
                 for (Line.Info li : targetLines)
                 {
-                    System.err.println(li.getLineClass().toString());
+                    //System.err.println(li.getLineClass().toString());
                     if (li.getLineClass().toString().equals("interface javax.sound.sampled.TargetDataLine"))
                         tlc++;
                 }
@@ -84,7 +84,7 @@ public class SoundSystem
             } catch (Exception e) {
                 e.printStackTrace(System.err);
             }
-            System.err.println("");
+            //System.err.println("");
         }
     }
 
