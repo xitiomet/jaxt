@@ -150,6 +150,7 @@ public class MixerStream implements Runnable
                     recordingEvent.put("timestamp", System.currentTimeMillis());
                     recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
                     JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
+                    JavaKISSMain.apiWebServer.addHistory(recordingEvent);
                 }
                 this.recordingFile = null;
                 this.recordingOutputStream = null;
