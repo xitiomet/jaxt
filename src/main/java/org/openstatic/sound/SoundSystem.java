@@ -120,6 +120,10 @@ public class SoundSystem
                         mixerSettings.put(mixerInfo, mSettings);
                         inputMixers.add(mixerInfo);
                     }
+                    if (mSettings.optBoolean("watch", false) || mSettings.optBoolean("autoRecord", false))
+                    {
+                        getMixerStream(mixerInfo);
+                    }
                 }
                 
             } catch (Exception e) {

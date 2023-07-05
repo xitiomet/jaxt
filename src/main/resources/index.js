@@ -88,6 +88,13 @@ function doAuth()
     });
 }
 
+function playAudio(uri)
+{
+    var audioElement = document.getElementById('audioElement');
+    audioElement.src = uri;
+    audioElement.play();
+}
+
 function listenClick(devId)
 {
     var sdd = document.getElementById('selectDeviceDiv');
@@ -221,6 +228,8 @@ function setupWebsocket()
                     });
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
+                } else if (action == 'recording') {
+                    logRecording(jsonObject);
                 } else if (action == 'kissConnected') {
                     updateKCS(true);
                 } else if (action == 'kissDisconnected') {
@@ -318,13 +327,28 @@ function logPacket(packet)
     }
 }
 
+function logRecording(jsonObject)
+{
+    var console = document.getElementById('console');
+    var d = new Date();
+    if (jsonObject.hasOwnProperty('timestamp'))
+        d = new Date(jsonObject.timestamp);
+    var divId = jsonObject.uri + "_" + d.getTime();
+    if (document.getElementById(divId) == undefined)
+    {
+        var line =  "<div id=\"" + divId + "\" style=\"color: #FF5733;\">( REC " + getDTString(d) + ") " + jsonObject.name + " <a href=\"" + jsonObject.uri + "\" target=\"_blank\">(Download)</a> <a href=\"#\" onclick=\"playAudio('" + jsonObject.uri + "')\">(Listen)</a> ";
+        line += "</div>";
+        console.innerHTML += line;
+        window.scrollTo(0,document.body.scrollHeight);
+    }
+}
 
 function logAPRS(jsonObject)
 {
     var console = document.getElementById('console');
     var d = new Date();
     if (jsonObject.hasOwnProperty('timestamp'))
-        d = new Date(packet.timestamp);
+        d = new Date(jsonObject.timestamp);
     var divId = jsonObject.source + "_" + jsonObject.type + "_" + d.getTime();
     if (document.getElementById(divId) == undefined)
     {
@@ -352,6 +376,9 @@ window.onload = function() {
         document.getElementById('speakerButton').style.backgroundColor = 'black';
     };
     audioElement.onerror = function() {
+        document.getElementById('speakerButton').style.backgroundColor = 'black';
+    };
+    audioElement.onended = function() {
         document.getElementById('speakerButton').style.backgroundColor = 'black';
     };
     setupWebsocket();

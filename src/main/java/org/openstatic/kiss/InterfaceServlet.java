@@ -1,5 +1,7 @@
 package org.openstatic.kiss;
 import java.net.URL;
+import java.util.regex.Pattern;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -7,6 +9,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.http.MimeTypes;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,10 +29,10 @@ public class InterfaceServlet extends HttpServlet
         String target = request.getPathInfo();
         if (target == null)
             target = "/";
+        //JavaKISSMain.logAppend("interface.log", "RES " + target);
         if ("/".equals(target))
             target = "/index.html";
         target = "/jaxt" + target;
-        //JavaKISSMain.logAppend("interface.log", "RES " + target);
         URL data = getClass().getResource(target);
         if (data != null)
         {

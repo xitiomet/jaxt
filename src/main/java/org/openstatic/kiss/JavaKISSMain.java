@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.cli.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openstatic.sound.SoundSystem;
 
 public class JavaKISSMain implements AX25PacketListener, Runnable
 {
@@ -39,6 +40,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     public static JSONObject settings;
     public static File settingsFile;
     public static APIWebServer apiWebServer;
+    public static SoundSystem soundSystem;
 
     public JavaKISSMain(KISSClient client)
     {
@@ -182,12 +184,12 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
 
             if (cmd.hasOption("l"))
             {
-                settings.put("logPath", cmd.getOptionValue("l", "./jaxt-logs"));
+                settings.put("logPath", cmd.getOptionValue("l", "." + File.separator + "jaxt-logs"));
             }
 
             if (cmd.hasOption("c"))
             {
-                settings.put("commandsFile", cmd.getOptionValue("c", "./commands.json"));
+                settings.put("commandsFile", cmd.getOptionValue("c", "." + File.separator + "commands.json"));
             }
 
             if (cmd.hasOption("p"))
@@ -196,7 +198,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             }
             if (JavaKISSMain.settings.has("logPath"))
             {
-                JavaKISSMain.logsFolder = new File(JavaKISSMain.settings.optString("logPath", "./jaxt-logs"));
+                JavaKISSMain.logsFolder = new File(JavaKISSMain.settings.optString("logPath", "." + File.separator + "jaxt-logs"));
                 if (!JavaKISSMain.logsFolder.exists())
                 {
                     JavaKISSMain.logsFolder.mkdirs();
@@ -210,6 +212,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             kClient.setTxDisabled(settings.optBoolean("txDisabled", false));
             JavaKISSMain jkm = new JavaKISSMain(kClient);
             JavaKISSMain.logAppend("main.log", "[STARTED]");
+            JavaKISSMain.soundSystem = new SoundSystem();
             saveSettings();
             if (settings.has("terminal"))
             {

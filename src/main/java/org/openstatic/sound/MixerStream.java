@@ -1,11 +1,15 @@
 package org.openstatic.sound;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -14,6 +18,7 @@ import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
 
 import org.json.JSONObject;
+import org.openstatic.kiss.APIWebServer;
 import org.openstatic.kiss.JavaKISSMain;
 
 import net.sourceforge.lame.lowlevel.LameEncoder;
@@ -36,6 +41,8 @@ public class MixerStream implements Runnable
     private boolean longSilence;
     private long silenceStartAt;
     private JSONObject mixerSettings;
+    private File recordingFile;
+    private FileOutputStream recordingOutputStream;
 
     public MixerStream(Mixer.Info mixerInfo, JSONObject mixerSettings) throws LineUnavailableException
     {
@@ -129,6 +136,24 @@ public class MixerStream implements Runnable
     {
         Thread t = new Thread(() -> {
             JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
+            if (this.recordingOutputStream != null)
+            {
+                try
+                {
+                    this.recordingOutputStream.close();
+                } catch (Exception e) {}
+                if (JavaKISSMain.apiWebServer != null)
+                {
+                    JSONObject recordingEvent = new JSONObject();
+                    recordingEvent.put("action", "recording");
+                    recordingEvent.put("name", this.recordingFile.getName());
+                    recordingEvent.put("timestamp", System.currentTimeMillis());
+                    recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
+                    JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
+                }
+                this.recordingFile = null;
+                this.recordingOutputStream = null;
+            }
         });
         t.start();
     }
@@ -137,6 +162,20 @@ public class MixerStream implements Runnable
     {
         Thread t = new Thread(() -> {
             JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
+            if (mixerSettings.optBoolean("autoRecord", false) && JavaKISSMain.logsFolder != null)
+            {
+                File mixerFolder = new File(JavaKISSMain.logsFolder, this.getMixerName());
+                if (!mixerFolder.exists())
+                    mixerFolder.mkdir();
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HHmmss");
+                String mp3Name = simpleDateFormat.format(new Date(System.currentTimeMillis())) + ".mp3";
+                this.recordingFile = new File(mixerFolder, mp3Name);
+                JavaKISSMain.mainLog("[RECORDING] " + this.recordingFile.getName());
+                try
+                {
+                    this.recordingOutputStream = new FileOutputStream(this.recordingFile);
+                } catch (Exception e) {}
+            }
         });
         t.start();
     }
@@ -144,6 +183,7 @@ public class MixerStream implements Runnable
     @Override
     public void run() 
     {
+        JavaKISSMain.mainLog("[AUDIO MIXER ACTIVATED] " + this.getMixerName() + " (" + this.mixer.getMixerInfo().getName() + ")");
         AudioInputStream audioInputStream = new AudioInputStream(this.line);
         try
         {
@@ -175,7 +215,7 @@ public class MixerStream implements Runnable
                 }
                 if (this.silence && !this.longSilence)
                 {
-                    if ((System.currentTimeMillis() - this.silenceStartAt) > 2000)
+                    if ((System.currentTimeMillis() - this.silenceStartAt) > 5000)
                     {
                         this.longSilence = true;
                         fireLongSilence();
@@ -192,6 +232,16 @@ public class MixerStream implements Runnable
                         outputMp3Stream.write(mp3OutputBuffer,0,bytesWritten);
                     } catch (Exception e) {
                         outputMp3.remove(mp3OutputBuffer);
+                    }
+                }
+                if (this.recordingOutputStream != null)
+                {
+                    try
+                    {
+                        this.recordingOutputStream.write(mp3OutputBuffer,0,bytesWritten);
+                    } catch (Exception e) {
+                        this.recordingFile = null;
+                        this.recordingOutputStream = null;
                     }
                 }
                 for (OutputStream outputRawStream : (ArrayList<OutputStream>) this.outputRaw.clone()) 
@@ -214,5 +264,6 @@ public class MixerStream implements Runnable
             this.line.close();
         }
         this.listeners.forEach((l) -> l.onShutdown(this));
+        JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.mixer.getMixerInfo().getName() + ")");
     }
 }

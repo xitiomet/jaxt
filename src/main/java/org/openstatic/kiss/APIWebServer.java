@@ -13,15 +13,18 @@ import org.openstatic.aprs.parser.PositionPacket;
 import org.openstatic.sound.SoundSystem;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.Arrays;
 
@@ -53,13 +56,11 @@ public class APIWebServer implements AX25PacketListener, Runnable
     private KISSClient kClient;
     private Thread pingPongThread;
     private ArrayList<JSONObject> packetHistory;
-    private SoundSystem soundSystem;
 
     protected static APIWebServer instance;
 
     public APIWebServer(KISSClient client)
     {
-        this.soundSystem = new SoundSystem();
         this.packetHistory = new ArrayList<JSONObject>();
         this.kClient = client;
         this.kClient.addAX25PacketListener(this);
@@ -218,11 +219,11 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 } else if (action.equals("clearHistory")) {
                     this.packetHistory.clear();
                 } else if (action.equals("lsaudio")) {
-                    APIWebServer.instance.soundSystem.refreshMixers();
+                    JavaKISSMain.soundSystem.refreshMixers();
                     JSONObject infoPacket = new JSONObject();
                     infoPacket.put("action", "lsaudio");
-                    infoPacket.put("recording", APIWebServer.instance.soundSystem.getRecordingDevices());
-                    infoPacket.put("playback", APIWebServer.instance.soundSystem.getPlaybackDevices());
+                    infoPacket.put("recording", JavaKISSMain.soundSystem.getRecordingDevices());
+                    infoPacket.put("playback", JavaKISSMain.soundSystem.getPlaybackDevices());
                     infoPacket.put("timestamp", System.currentTimeMillis());
                     session.getRemote().sendStringByFuture(infoPacket.toString());
                 } else if (action.equals("info")) {
@@ -477,12 +478,35 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 throws ServletException, IOException {
             String responseType = "text/javascript";
             String target = request.getPathInfo();
+
+            if (target.startsWith("/logs/") && JavaKISSMain.logsFolder != null)
+            {
+                target = target.substring(5);
+                //System.err.println(target + " " + File.separator);
+                File logFile = new File(JavaKISSMain.logsFolder, target.replace('/', File.separatorChar));
+                //System.err.println(logFile.toString());
+                if (logFile.exists() && !logFile.isDirectory())
+                {
+                    String contentType = InterfaceServlet.getContentTypeFor(target);            
+                    httpServletResponse.setContentType(contentType);
+                    httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+                    httpServletResponse.setCharacterEncoding("UTF-8");
+                    InputStream inputStream = new FileInputStream(logFile);
+                    OutputStream output = httpServletResponse.getOutputStream();
+                    inputStream.transferTo(output);
+                    output.flush();
+                    inputStream.close();
+                } else {
+                    //JavaKISSMain.logAppend("interface.log", "GET " + target + " 404");
+                    httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                }
+                return;
+            }
             //System.err.println("Path: " + target);
             Set<String> parameterNames = request.getParameterMap().keySet();
             JSONObject response = new JSONObject();
             if (JavaKISSMain.settings.optString("apiPassword","").equals(request.getParameter("apiPassword")) || APIWebServer.instance.validateTermAuth(request.getParameter("termAuth")))
             {
-                
                 if (target.equals("/transmit/"))
                 {
                     if (APIWebServer.instance.kClient.isConnected())
@@ -509,13 +533,13 @@ public class APIWebServer implements AX25PacketListener, Runnable
                         }
                     }
                 } else if (target.equals("/audio/")) {
-                    response.put("recording", APIWebServer.instance.soundSystem.getRecordingDevices());
-                    response.put("playback", APIWebServer.instance.soundSystem.getPlaybackDevices());
+                    response.put("recording", JavaKISSMain.soundSystem.getRecordingDevices());
+                    response.put("playback", JavaKISSMain.soundSystem.getPlaybackDevices());
                 } else if (target.equals("/stream/")) {
                     int devId = Integer.valueOf(request.getParameter("devId")).intValue();
                     try
                     {
-                        APIWebServer.instance.soundSystem.openRecordingDeviceAndWriteTo(devId, request, httpServletResponse);
+                        JavaKISSMain.soundSystem.openRecordingDeviceAndWriteTo(devId, request, httpServletResponse);
                     } catch (Exception e) {
                         e.printStackTrace(System.err);
                     }
