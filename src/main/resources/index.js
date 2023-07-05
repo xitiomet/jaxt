@@ -116,38 +116,45 @@ function listen()
         success: (data) => {
             if (data.hasOwnProperty('recording'))
             {
-                var audioElement = document.getElementById('audioElement');
-                var selectDeviceDiv = document.createElement("div");
-                selectDeviceDiv.className = "modal";
-                selectDeviceDiv.id = "selectDeviceDiv";
-                var i = 0;
-                for(const recDev of data.recording)
+                if (data.recording.length > 0)
                 {
-                    var devButton = document.createElement("button");
-                    devButton.id = "audioDev_" + i;
-                    devButton.onclick = function() {
-                        var devId = parseInt(this.id.substr(9));
-                        //alert(devId);
-                        listenClick(devId);
-                    };
-                    devButton.innerText = recDev;
-                    devButton.style.width = '100%';
-                    devButton.style.height = '48px';
-                    selectDeviceDiv.appendChild(devButton);
-                    i++;
-                }
-                if (audioElement.duration > 0 && !audioElement.paused)
-                {
+                    var audioElement = document.getElementById('audioElement');
+                    var selectDeviceDiv = document.createElement("div");
+                    selectDeviceDiv.className = "modal";
+                    selectDeviceDiv.id = "selectDeviceDiv";
+                    var i = 0;
+                    for(const recDev of data.recording)
+                    {
+                        var devButton = document.createElement("button");
+                        devButton.id = "audioDev_" + i;
+                        devButton.onclick = function() {
+                            var devId = parseInt(this.id.substr(9));
+                            //alert(devId);
+                            listenClick(devId);
+                        };
+                        devButton.innerText = recDev;
+                        devButton.style.width = '100%';
+                        devButton.style.height = '48px';
+                        selectDeviceDiv.appendChild(devButton);
+                        i++;
+                    }
                     var devButton = document.createElement("button");
                     devButton.onclick = () => { listenClick(-1); }
-                    devButton.innerText = "STOP";
                     devButton.style.width = '100%';
                     devButton.style.height = '48px';
                     devButton.style.backgroundColor = 'red';
                     devButton.style.fontSize = '18px';
                     selectDeviceDiv.appendChild(devButton);
+                    if (audioElement.duration > 0 && !audioElement.paused)
+                    {
+                        devButton.innerText = "STOP";
+                    } else {
+                        devButton.innerText = "CANCEL";
+                    }
+                    document.getElementById('bodyTag').appendChild(selectDeviceDiv);
+                } else {
+                    alert("No Recording devices found!");
                 }
-                document.getElementById('bodyTag').appendChild(selectDeviceDiv);
             }
         },
         error: () => {}

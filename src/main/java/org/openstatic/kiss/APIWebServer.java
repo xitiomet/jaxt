@@ -226,12 +226,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     infoPacket.put("timestamp", System.currentTimeMillis());
                     session.getRemote().sendStringByFuture(infoPacket.toString());
                 } else if (action.equals("info")) {
-                    JSONObject infoPacket = new JSONObject();
-                    infoPacket.put("action", "info");
-                    infoPacket.put("text", j.optString("text", ""));
-                    infoPacket.put("timestamp", System.currentTimeMillis());
-                    APIWebServer.instance.broadcastJSONObject(infoPacket);
-                    addHistory(infoPacket);
+                    broadcastINFO(j.optString("text", ""));
                 }
             }
         } else {
@@ -257,6 +252,16 @@ public class APIWebServer implements AX25PacketListener, Runnable
             args[i] = arry.getString(i);
         }
         return args;
+    }
+
+    public void broadcastINFO(String text)
+    {
+        JSONObject infoPacket = new JSONObject();
+        infoPacket.put("action", "info");
+        infoPacket.put("text", text);
+        infoPacket.put("timestamp", System.currentTimeMillis());
+        APIWebServer.instance.broadcastJSONObject(infoPacket);
+        addHistory(infoPacket);
     }
 
     public void broadcastJSONObject(JSONObject jo) 

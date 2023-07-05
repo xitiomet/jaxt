@@ -1,7 +1,10 @@
 package org.openstatic.sound;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 import javax.sound.sampled.AudioFormat;
@@ -9,6 +12,9 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
+
+import org.json.JSONObject;
+import org.openstatic.kiss.JavaKISSMain;
 
 import net.sourceforge.lame.lowlevel.LameEncoder;
 import net.sourceforge.lame.mp3.Lame;
@@ -24,20 +30,29 @@ public class MixerStream implements Runnable
     private ArrayList<OutputStream> outputMp3;
     private ArrayList<OutputStream> outputRaw;
     private Thread myThread;
-    private ArrayList<Runnable> deathWatch;
+    private ArrayList<MixerStreamListener> listeners;
+    private double rms;
+    private boolean silence;
+    private boolean longSilence;
+    private long silenceStartAt;
+    private JSONObject mixerSettings;
 
-    public MixerStream(Mixer.Info mixerInfo) throws LineUnavailableException
+    public MixerStream(Mixer.Info mixerInfo, JSONObject mixerSettings) throws LineUnavailableException
     {
+        this.mixerSettings = mixerSettings;
         this.format = new AudioFormat(
-            44100,  // Sample Rate
-            16,     // Size of SampleBits
-            1,      // Number of Channels
-            true,   // Is Signed?
-            false   // Is Big Endian?
+            mixerSettings.optFloat("sampleRate", 44100),  // Sample Rate
+            mixerSettings.optInt("sampleSizeInBits", 16),     // Size of SampleBits
+            mixerSettings.optInt("channels", 1),      // Number of Channels
+            mixerSettings.optBoolean("signed", true),   // Is Signed?
+            mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
         );
+        this.silenceStartAt = System.currentTimeMillis();
+        this.silence = true;
+        this.longSilence = true;
         this.outputMp3 = new ArrayList<OutputStream>();
         this.outputRaw = new ArrayList<OutputStream>();
-        this.deathWatch = new ArrayList<Runnable>();
+        this.listeners = new ArrayList<MixerStreamListener>();
         this.mixer = AudioSystem.getMixer(mixerInfo);        
         this.mixer.open();
         this.line = (TargetDataLine) AudioSystem.getTargetDataLine(format, mixerInfo);
@@ -47,12 +62,22 @@ public class MixerStream implements Runnable
         this.myThread.setPriority(Thread.MAX_PRIORITY);
         this.myThread.start();
     }
-    
-    public void addOnDeathAction(Runnable r)
+
+    public String getMixerName()
     {
-        if (!this.deathWatch.contains(r))
+        return this.mixerSettings.optString("rename", mixer.getMixerInfo().getName());
+    }
+
+    public double getRMS()
+    {
+        return this.rms;
+    }
+    
+    public void addListener(MixerStreamListener l)
+    {
+        if (!this.listeners.contains(l))
         {
-            this.deathWatch.add(r);
+            this.listeners.add(l);
         }
     }
 
@@ -82,6 +107,40 @@ public class MixerStream implements Runnable
         return this.myThread.isAlive();
     }
 
+    public static double calcRMS(byte[] data, int numBytesRead)
+    {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        short[] shorts = new short[data.length / 2];
+        ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shorts);
+
+        // Save this chunk of data.
+        byteArrayOutputStream.write(data, 0, numBytesRead);
+
+        double rms = 0;
+        for (int i = 0; i < shorts.length; i++) {
+            double normal = shorts[i] / 32768f;
+            rms += normal * normal;
+        }
+        rms = Math.sqrt(rms / shorts.length);
+        return rms;
+    }
+
+    private void fireLongSilence()
+    {
+        Thread t = new Thread(() -> {
+            JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
+        });
+        t.start();
+    }
+
+    private void fireSilenceBroken()
+    {
+        Thread t = new Thread(() -> {
+            JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
+        });
+        t.start();
+    }
+
     @Override
     public void run() 
     {
@@ -100,6 +159,31 @@ public class MixerStream implements Runnable
 
             while(0 < (bytesRead = audioInputStream.read(rawInputBuffer))) 
             {
+                this.rms = calcRMS(rawInputBuffer, bytesRead);
+                if (this.rms < 0.1)
+                {
+                    if (!this.silence)
+                    {
+                        this.silence = true;
+                        this.silenceStartAt = System.currentTimeMillis();
+                    }
+                } else {
+                    if (this.silence)
+                    {
+                        this.silence = false;
+                    }
+                }
+                if (this.silence && !this.longSilence)
+                {
+                    if ((System.currentTimeMillis() - this.silenceStartAt) > 2000)
+                    {
+                        this.longSilence = true;
+                        fireLongSilence();
+                    }
+                } else if (!this.silence && this.longSilence) {
+                    this.longSilence = false;
+                    fireSilenceBroken();
+                }
                 bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
                 for (OutputStream outputMp3Stream : (ArrayList<OutputStream>) this.outputMp3.clone()) 
                 {
@@ -129,6 +213,6 @@ public class MixerStream implements Runnable
             this.line.stop();
             this.line.close();
         }
-        this.deathWatch.forEach((d) -> d.run());
+        this.listeners.forEach((l) -> l.onShutdown(this));
     }
 }

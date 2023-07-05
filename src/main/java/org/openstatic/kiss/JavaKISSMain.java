@@ -227,16 +227,15 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                         {
                             commandArray.add(command.getString(i));
                         }
-                        JavaKISSMain.logAppend("main.log", "[TERMINAL LINK " + key + "] " + commandArray.stream().collect(Collectors.joining(" ")));
+                        JavaKISSMain.mainLog("[TERMINAL LINK " + key + "] " + commandArray.stream().collect(Collectors.joining(" ")));
                         tl.addTerminalLinkListener(new TerminalLinkListener() {
                             @Override
                             public void onTerminalLinkSession(final TerminalLinkSession session) 
                             {
                                 ProcessBuilder prb = new ProcessBuilder(commandArray.toArray(new String[commandArray.size()]));                        
                                 session.setHandler(new ProcessTerminalLinkSessionHandler(prb));
-                                JavaKISSMain.logAppend("main.log", "[TERMINAL STARTED " + session.getTerminalCallsign() + "] " + session.getRemoteCallsign() + " " + commandArray.stream().collect(Collectors.joining(" ")));
+                                JavaKISSMain.mainLog("[TERMINAL STARTED " + session.getTerminalCallsign() + "] " + session.getRemoteCallsign() + " " + commandArray.stream().collect(Collectors.joining(" ")));
                             }
-                    
                         });
                     }
                     
@@ -342,6 +341,15 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             } catch (Exception e) {
                 log(e);
             }
+        }
+    }
+
+    public static void mainLog(String text)
+    {
+        JavaKISSMain.logAppend("main.log", text);
+        if (JavaKISSMain.apiWebServer != null)
+        {
+            JavaKISSMain.apiWebServer.broadcastINFO(text);
         }
     }
 
