@@ -3,7 +3,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="apple-touch-fullscreen" content="yes">
         <meta name="mobile-web-app-capable" content="yes">
-        <script src="index.js"></script>
+        <script type="text/javascript" src="jquery.min.js"></script>
+        <script type="text/javascript" src="index.js"></script>
         <title>JAXT</title>
         <style type="text/css">
             .circle
@@ -25,6 +26,17 @@
                 transform: scaleX(-1);
                 -ms-filter: fliph; /*IE*/
                 filter: fliph; /*IE*/
+            }
+            .modal {
+              background: white;
+              position: absolute;
+              float: left;
+              left: 50%;
+              top: 50%;
+              border: 2px black solid;
+              width: 300px;
+              height: 300px;
+              transform: translate(-50%, -50%);
             }
             html
             {
@@ -187,6 +199,10 @@
               cursor: pointer;
             }
 
+            #speakerButton {
+              cursor: pointer;
+            }
+
             #aboutIcon {
               cursor: pointer;
             }
@@ -208,7 +224,7 @@
             }
           </style>
     </head>
-    <body>
+    <body id="bodyTag">
         <div style="padding: 2px 2px 2px 2px; margin: 0px 0px 0px 0px; background: black; border: solid 1px black; color: white; position: fixed; top: 0; width: 100%; height: 42px;">
             <table width="100%"><tbody>
                 <tr><td width="32px"><img src="icon-32.png"></td>
@@ -216,6 +232,7 @@
                 <td style="padding-right: 9px;" align="right">
                   <img src="about.png" id="aboutIcon" style="width: 32px; height: 32px;" title="About" onclick="window.open('https://openstatic.org/projects/jaxt/', '_blank');" />
                   <img src="eraser-32.png" id="clearButton" style="width: 32px; height: 32px; display: none;" title="Clear History" onclick="clearHistory();" />
+                  <img src="speaker-32.png" id="speakerButton" style="width: 32px; height: 32px; display: none;" title="Listen" onclick="listen();" />
                   <img src="console-32.png" id="consoleButton" style="display: none; height: 32px; padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px;" onclick="doConsoleWindow()" title="Open console" />
                   <img src="tx.png" id="txButton" style="display: none; height: 32px; padding: 0px 0px 0px 0px; margin: 0px 0px 0px 0px;" onclick="doTxWindow()" title="Open transmit dialog" />
                   <img src="led-grey.svg" id="connectionLed" style="width: 32px; height: 32px;" title="KISS Connection Status" />
@@ -231,5 +248,6 @@
             <tr><td><button id="login_btn" name="login_btn" onclick="doAuth()" style="width: 100%; height: 35px;">Login</button></td></tr>
             </tbody></table>
         </div>
+        <audio id="audioElement" style="display: none;"></audio>
     </body>
 </html>

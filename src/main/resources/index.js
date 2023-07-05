@@ -88,6 +88,71 @@ function doAuth()
     });
 }
 
+function listenClick(devId)
+{
+    var sdd = document.getElementById('selectDeviceDiv');
+    document.getElementById('bodyTag').removeChild(sdd);
+    var audioElement = document.getElementById('audioElement');
+    if (devId >= 0)
+    {
+        var streamUrl = "jaxt/api/stream/?termAuth=" + termAuth + "&devId=" + devId;
+        console.log("Opening Stream: " + streamUrl);
+        audioElement.src = streamUrl;
+        audioElement.play();
+       
+    } else {
+        console.log("Closing Stream: " + audioElement.src);
+        audioElement.src = "";
+        document.getElementById('speakerButton').style.backgroundColor = 'black';
+    }
+}
+
+function listen()
+{
+    $.ajax({
+        url: "jaxt/api/audio/?termAuth=" + termAuth,
+        type: 'GET',
+        dataType: 'json',
+        success: (data) => {
+            if (data.hasOwnProperty('recording'))
+            {
+                var audioElement = document.getElementById('audioElement');
+                var selectDeviceDiv = document.createElement("div");
+                selectDeviceDiv.className = "modal";
+                selectDeviceDiv.id = "selectDeviceDiv";
+                var i = 0;
+                for(const recDev of data.recording)
+                {
+                    var devButton = document.createElement("button");
+                    devButton.id = "audioDev_" + i;
+                    devButton.onclick = function() {
+                        var devId = parseInt(this.id.substr(9));
+                        //alert(devId);
+                        listenClick(devId);
+                    };
+                    devButton.innerText = recDev;
+                    devButton.style.width = '100%';
+                    devButton.style.height = '48px';
+                    selectDeviceDiv.appendChild(devButton);
+                    i++;
+                }
+                if (audioElement.duration > 0 && !audioElement.paused)
+                {
+                    var devButton = document.createElement("button");
+                    devButton.onclick = () => { listenClick(-1); }
+                    devButton.innerText = "STOP";
+                    devButton.style.width = '100%';
+                    devButton.style.height = '48px';
+                    devButton.style.backgroundColor = 'red';
+                    devButton.style.fontSize = '18px';
+                    selectDeviceDiv.appendChild(devButton);
+                }
+                document.getElementById('bodyTag').appendChild(selectDeviceDiv);
+            }
+        },
+        error: () => {}
+    });
+}
 
 function setupWebsocket()
 {
@@ -136,6 +201,7 @@ function setupWebsocket()
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('console').style.display = 'block';
                     document.getElementById('clearButton').style.display = 'inline-block';
+                    document.getElementById('speakerButton').style.display = 'inline-block';
                     if (!jsonObject.txDisabled)
                     {
                         document.getElementById('txButton').style.display = 'inline-block';
@@ -271,6 +337,16 @@ function logAPRS(jsonObject)
 }
 
 window.onload = function() {
+    var audioElement = document.getElementById('audioElement');
+    audioElement.onplay = function() {
+        document.getElementById('speakerButton').style.backgroundColor = 'red';
+    };
+    audioElement.onclose = function() {
+        document.getElementById('speakerButton').style.backgroundColor = 'black';
+    };
+    audioElement.onerror = function() {
+        document.getElementById('speakerButton').style.backgroundColor = 'black';
+    };
     setupWebsocket();
 };
 
