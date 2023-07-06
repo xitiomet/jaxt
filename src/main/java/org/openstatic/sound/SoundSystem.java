@@ -21,199 +21,136 @@ import org.openstatic.kiss.JavaKISSMain;
 
 public class SoundSystem 
 {
-    ArrayList<Mixer.Info> inputMixers;
-    ArrayList<Mixer.Info> outputMixers;
-    HashMap<Mixer.Info, MixerStream> mixerStreams;
-    HashMap<Mixer.Info, String> mixerNames;
-    HashMap<String, Mixer.Info> mixerKeys;
-    HashMap<Mixer.Info, JSONObject> mixerSettings;
+    ArrayList<MixerStream> availableMixerStreams;
+    ArrayList<MixerStream> allMixerStreams;
+    HashMap<Mixer.Info, MixerStreamHardware> mixerHardwareStreams;
 
     JSONObject audioSettings;
 
     public SoundSystem()
     {
         this.audioSettings = JavaKISSMain.settings.optJSONObject("audio", new JSONObject());
-        this.mixerStreams = new HashMap<Mixer.Info, MixerStream>();
-        this.mixerNames = new HashMap<Mixer.Info, String>();
+        this.mixerHardwareStreams = new HashMap<Mixer.Info, MixerStreamHardware>();
         refreshMixers();
     }
 
     public void refreshMixers()
     {
-        this.inputMixers = new ArrayList<Mixer.Info>();
-        this.outputMixers = new ArrayList<Mixer.Info>();
-        this.mixerNames = new HashMap<Mixer.Info, String>();
-        this.mixerKeys = new HashMap<String, Mixer.Info>();
-        this.mixerSettings = new HashMap<Mixer.Info, JSONObject>();
-
+        this.allMixerStreams = new ArrayList<MixerStream>();
+        this.availableMixerStreams = new ArrayList<MixerStream>();
         boolean hideUndefined = this.audioSettings.optBoolean("hideUndefined", false);
         HashMap<String, JSONObject> definedDevices = new HashMap<String, JSONObject>();
         if (this.audioSettings.has("devices"))
         {
-            JSONObject devices = this.audioSettings.getJSONObject("devices");
-            Set<String> devSearchNames = devices.keySet();
-            devSearchNames.forEach((dsn) -> {
-                definedDevices.put(dsn, devices.getJSONObject(dsn));
+            JSONArray devices = this.audioSettings.getJSONArray("devices");
+            devices.forEach((dsn) -> {
+                JSONObject jo = (JSONObject) dsn;
+                if (jo.has("hardwareName") && jo.optString("type", "").equals("hardware"))
+                {
+                    definedDevices.put(jo.optString("hardwareName"), jo);
+                }
             });
         }
         Mixer.Info[] mixers = AudioSystem.getMixerInfo();
         for (Mixer.Info mixerInfo : mixers)
         {
-            Mixer m = AudioSystem.getMixer(mixerInfo);
+            String mixerHardwareName = mixerInfo.getName();
             try
             {
-                
-                Line.Info[] sourceLines = m.getSourceLineInfo();
-                int slc = 0;
-                for (Line.Info li : sourceLines)
+                boolean defined = false;
+                JSONObject mSettings = new JSONObject();
+                mSettings.put("name", mixerHardwareName);
+                mSettings.put("type", "hardware");
+                mSettings.put("hardwareName", mixerHardwareName);
+                // Check to see if the mixer is defined in settings
+                for(String key : definedDevices.keySet())
                 {
-                    if (li.getLineClass().toString().equals("interface javax.sound.sampled.SourceDataLine"))
-                        slc++;
-                }
-                if (slc > 0)
-                {
-                    String mixerName = mixerInfo.getName();
-                    JSONObject mSettings = new JSONObject();
-                    boolean defined = false;
-                    for(String key : definedDevices.keySet())
+                    if (mixerHardwareName.contains(key))
                     {
-                        if (mixerName.contains(key))
-                        {
-                            mSettings = definedDevices.get(key);
-                            mixerKeys.put(key, mixerInfo);
-                            defined = true;
-                        }
+                        mSettings = definedDevices.get(key);
+                        defined = true;
                     }
+                }
+                // Always create mixerstream for device even if not used.
+                MixerStreamHardware mixerStreamHardware = this.mixerHardwareStreams.get(mixerInfo);
+                if (mixerStreamHardware == null)
+                {
+                    mixerStreamHardware = new MixerStreamHardware(mixerInfo, mSettings);
+                    this.mixerHardwareStreams.put(mixerInfo, mixerStreamHardware);
+                }
+                if (mixerStreamHardware.canBeRecorded() || mixerStreamHardware.canPlayTo())
+                {
                     if (!mSettings.optBoolean("disabled", false) && (!hideUndefined || defined))
                     {
-                        mixerNames.put(mixerInfo, mSettings.optString("rename", mixerName));
-                        mixerSettings.put(mixerInfo, mSettings);
-                        outputMixers.add(mixerInfo);
-                    }
-                }
-                Line.Info[] targetLines = m.getTargetLineInfo();
-                int tlc = 0;
-                for (Line.Info li : targetLines)
-                {
-                    if (li.getLineClass().toString().equals("interface javax.sound.sampled.TargetDataLine"))
-                        tlc++;
-                }
-                if (tlc > 0)
-                {
-                    String mixerName = mixerInfo.getName();
-                    JSONObject mSettings = new JSONObject();
-                    boolean defined = false;
-                    for(String key : definedDevices.keySet())
-                    {
-                        if (mixerName.contains(key))
+                        availableMixerStreams.add(mixerStreamHardware);
+                        if (mSettings.optBoolean("watch", false) || mSettings.optBoolean("autoRecord", false))
                         {
-                            mSettings = definedDevices.get(key);
-                            mixerKeys.put(key, mixerInfo);
-                            defined = true;
+                            mixerStreamHardware.start();
                         }
                     }
-                    if (!mSettings.optBoolean("disabled", false) && (!hideUndefined || defined))
-                    {
-                        mixerNames.put(mixerInfo, mSettings.optString("rename", mixerName));
-                        mixerSettings.put(mixerInfo, mSettings);
-                        inputMixers.add(mixerInfo);
-                    }
-                    if (mSettings.optBoolean("watch", false) || mSettings.optBoolean("autoRecord", false))
-                    {
-                        getMixerStream(mixerInfo);
-                    }
+                    if (!hideUndefined || defined)
+                        allMixerStreams.add(mixerStreamHardware);
                 }
-                
             } catch (Exception e) {
                 e.printStackTrace(System.err);
             }
         }
+        JSONArray devices = this.audioSettings.getJSONArray("devices");
+        devices.forEach((dsn) -> {
+            JSONObject jo = (JSONObject) dsn;
+            if (jo.has("execute") && jo.optString("type", "").equals("process"))
+            {
+                MixerStreamProcess msp = new MixerStreamProcess(jo);
+                if (!jo.optBoolean("disabled", false))
+                    availableMixerStreams.add(msp);
+                allMixerStreams.add(msp);
+                if (jo.optBoolean("watch", false) || jo.optBoolean("autoRecord", false))
+                {
+                    msp.start();
+                }
+            }
+        });
     }
 
-    public JSONArray getRecordingDevices()
+    public JSONArray getAvailableDevices()
     {
         JSONArray ra = new JSONArray();
-        Iterator<Mixer.Info> mixerIterator = this.inputMixers.iterator();
+        Iterator<MixerStream> mixerIterator = this.availableMixerStreams.iterator();
         while(mixerIterator.hasNext())
         {
-            Mixer.Info mixer = mixerIterator.next();
-            ra.put(mixerNames.getOrDefault(mixer, mixer.getName()));
+            MixerStream mixer = mixerIterator.next();
+            ra.put(mixer.getMixerName());
         }
         return ra;
     }
 
-    public JSONArray getPlaybackDevices()
-    {
-        JSONArray ra = new JSONArray();
-        Iterator<Mixer.Info> mixerIterator = this.outputMixers.iterator();
-        while(mixerIterator.hasNext())
-        {
-            Mixer.Info mixer = mixerIterator.next();
-            ra.put(mixerNames.getOrDefault(mixer, mixer.getName()));
-        }
-        return ra;
-    }
-
-    public JSONObject getActiveRecordingDevices()
+    public JSONObject getAvailableStates()
     {
         JSONObject ro = new JSONObject();
-        Iterator<Mixer.Info> mixerIterator = this.mixerStreams.keySet().iterator();
+        Iterator<MixerStream> mixerIterator = this.availableMixerStreams.iterator();
         while(mixerIterator.hasNext())
         {
-            Mixer.Info mixer = mixerIterator.next();
-            if (this.inputMixers.contains(mixer))
-                ro.put(mixerNames.getOrDefault(mixer, mixer.getName()), this.mixerStreams.get(mixer).getMixerSettings());
-        }
-        return ro;
-    }
-
-    public JSONObject getActivePlaybackDevices()
-    {
-        JSONObject ro = new JSONObject();
-        Iterator<Mixer.Info> mixerIterator = this.mixerStreams.keySet().iterator();
-        while(mixerIterator.hasNext())
-        {
-            Mixer.Info mixer = mixerIterator.next();
-            if (this.outputMixers.contains(mixer))
-                ro.put(mixerNames.getOrDefault(mixer, mixer.getName()), this.mixerStreams.get(mixer).getMixerSettings());
+            MixerStream mixer = mixerIterator.next();
+            JSONObject stateObject = new JSONObject();
+            stateObject.put("settings", mixer.getMixerSettings());
+            stateObject.put("isAlive", mixer.isAlive());
+            stateObject.put("canBeRecorded", mixer.canBeRecorded());
+            stateObject.put("canPlayTo", mixer.canPlayTo());
+            stateObject.put("outputStreamCount", mixer.outputStreamCount());
+            ro.put(mixer.getMixerName(), stateObject);
         }
         return ro;
     }
 
     public JSONObject getAudioSettings()
     {
-        JSONObject devices = new JSONObject();
-        for(String mixerKey : this.mixerKeys.keySet())
+        JSONArray devices = new JSONArray();
+        for(MixerStream mixerStream : this.allMixerStreams)
         {
-            Mixer.Info mixerInfo = this.mixerKeys.get(mixerKey);
-            if (!mixerStreams.containsKey(mixerKey))
-                devices.put(mixerKey,mixerSettings.get(mixerInfo));
-            else
-                devices.put(mixerKey,mixerStreams.get(mixerInfo).getMixerSettings());
+            devices.put(mixerStream.getMixerSettings());
         }
         this.audioSettings.put("devices", devices);
         return this.audioSettings;
-    }
-
-    
-    public synchronized MixerStream getMixerStream(Mixer.Info mixerInfo) throws LineUnavailableException
-    {
-        MixerStream mixerStream = this.mixerStreams.get(mixerInfo);
-        if (mixerStream == null)
-        {
-            mixerStream = new MixerStream(mixerInfo, mixerSettings.get(mixerInfo));
-            this.mixerStreams.put(mixerInfo, mixerStream);
-        }
-        if (!mixerStream.isAlive())
-        {
-            mixerStream = new MixerStream(mixerInfo, mixerSettings.get(mixerInfo));
-            this.mixerStreams.put(mixerInfo, mixerStream);
-        }
-        if (!mixerKeys.containsValue(mixerInfo))
-        {
-            mixerKeys.put(mixerInfo.getName(), mixerInfo);
-        }
-        return mixerStream;
     }
 
     public void openRecordingDeviceAndWriteTo(int devId, HttpServletRequest request, HttpServletResponse httpServletResponse) throws IOException
@@ -225,10 +162,11 @@ public class SoundSystem
         
         try
         {
-            Mixer.Info mixerInfo = this.inputMixers.get(devId);
-            MixerStream mixerStream = getMixerStream(mixerInfo);
+            MixerStream mixerStream = this.availableMixerStreams.get(devId);
+            if (!mixerStream.isAlive())
+                mixerStream.start();
             mixerStream.addMP3TargetStream(out);
-            mixerStream.addListener(new MixerStreamListener() {
+            mixerStream.addMixerStreamListener(new MixerStreamListener() {
 
                 @Override
                 public void onAudioStart(MixerStream mixerStream) {
@@ -247,12 +185,5 @@ public class SoundSystem
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
-    }
-
-    public static void main(String[] args)
-    {
-        SoundSystem ss = new SoundSystem();
-        System.err.println(ss.getRecordingDevices().toString(2));
-        System.err.println(ss.getPlaybackDevices().toString(2));
     }
 }

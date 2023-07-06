@@ -121,28 +121,31 @@ function listen()
         type: 'GET',
         dataType: 'json',
         success: (data) => {
-            if (data.hasOwnProperty('recording'))
+            if (data.hasOwnProperty('devices'))
             {
-                if (data.recording.length > 0)
+                if (data.devices.length > 0)
                 {
                     var audioElement = document.getElementById('audioElement');
                     var selectDeviceDiv = document.createElement("div");
                     selectDeviceDiv.className = "modal";
                     selectDeviceDiv.id = "selectDeviceDiv";
                     var i = 0;
-                    for(const recDev of data.recording)
+                    for(const recDev of data.devices)
                     {
-                        var devButton = document.createElement("button");
-                        devButton.id = "audioDev_" + i;
-                        devButton.onclick = function() {
-                            var devId = parseInt(this.id.substr(9));
-                            //alert(devId);
-                            listenClick(devId);
-                        };
-                        devButton.innerText = recDev;
-                        devButton.style.width = '100%';
-                        devButton.style.height = '48px';
-                        selectDeviceDiv.appendChild(devButton);
+                        if (data.state[recDev].canBeRecorded == true)
+                        {
+                            var devButton = document.createElement("button");
+                            devButton.id = "audioDev_" + i;
+                            devButton.onclick = function() {
+                                var devId = parseInt(this.id.substr(9));
+                                //alert(devId);
+                                listenClick(devId);
+                            };
+                            devButton.innerText = recDev;
+                            devButton.style.width = '100%';
+                            devButton.style.height = '48px';
+                            selectDeviceDiv.appendChild(devButton);
+                        }
                         i++;
                     }
                     var devButton = document.createElement("button");
@@ -160,7 +163,7 @@ function listen()
                     }
                     document.getElementById('bodyTag').appendChild(selectDeviceDiv);
                 } else {
-                    alert("No Recording devices found!");
+                    alert("No Audio Devices found!");
                 }
             }
         },

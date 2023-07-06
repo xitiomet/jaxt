@@ -394,14 +394,18 @@ function setupWebsocket()
                     runFakeTerminal();
                 } else if (action == 'lsaudio') {
                     var a = 0;
-                    term.writeln("-- Input --");
-                    for(devname of jsonObject.recording)
+                    term.writeln("-- Sound Devices --");
+                    for(devname of jsonObject.devices)
                     {
                         term.write(a + ": " + devname);
-                        if (jsonObject.activeRecording.hasOwnProperty(devname))
+                        if (jsonObject.state.hasOwnProperty(devname))
                         {
-                            term.write(" \x1B[0;92m(Active)\x1B[0m");
-                            if (jsonObject.activeRecording[devname]['autoRecord'] == true)
+                            var stateObj = jsonObject.state[devname];
+                            if (stateObj.isAlive == true)
+                            {
+                               term.write(" \x1B[0;92m(Active)\x1B[0m");
+                            }
+                            if (stateObj['settings']['autoRecord'] == true)
                             {
                                 term.write(" \x1B[0;91m(A-REC)\x1B[0m");
                             }
@@ -410,18 +414,6 @@ function setupWebsocket()
                         a++;
                     }
                     term.writeln("");
-                    term.writeln("-- Output --");
-                    var b = 0;
-                    for(devname of jsonObject.playback)
-                    {
-                        term.write(b + ": " + devname);
-                        if (jsonObject.activePlayback.hasOwnProperty(devname))
-                        {
-                            term.write(" \x1B[0;92m(Active)\x1B[0m");
-                        }
-                        term.writeln("");
-                        b++;
-                    }
                     prompt(term);
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
