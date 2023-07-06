@@ -11,8 +11,6 @@ import javax.servlet.AsyncContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Line;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 
 import org.json.JSONArray;
@@ -24,14 +22,23 @@ public class SoundSystem
     ArrayList<MixerStream> availableMixerStreams;
     ArrayList<MixerStream> allMixerStreams;
     HashMap<Mixer.Info, MixerStreamHardware> mixerHardwareStreams;
-
+    HashMap<String, MixerStreamProcess> mixerProcessStreams;
     JSONObject audioSettings;
 
     public SoundSystem()
     {
         this.audioSettings = JavaKISSMain.settings.optJSONObject("audio", new JSONObject());
         this.mixerHardwareStreams = new HashMap<Mixer.Info, MixerStreamHardware>();
+        this.mixerProcessStreams = new HashMap<String, MixerStreamProcess>();
         refreshMixers();
+        this.availableMixerStreams.forEach((mixerStream) -> {
+            JSONObject mixerStreamSettings = mixerStream.getMixerSettings();
+            if (mixerStreamSettings.optBoolean("watch", false) || mixerStreamSettings.optBoolean("autoRecord", false))
+            {
+                if (!mixerStream.isAlive())
+                    mixerStream.start();
+            }
+        });
     }
 
     public void refreshMixers()
@@ -83,10 +90,6 @@ public class SoundSystem
                     if (!mSettings.optBoolean("disabled", false) && (!hideUndefined || defined))
                     {
                         availableMixerStreams.add(mixerStreamHardware);
-                        if (mSettings.optBoolean("watch", false) || mSettings.optBoolean("autoRecord", false))
-                        {
-                            mixerStreamHardware.start();
-                        }
                     }
                     if (!hideUndefined || defined)
                         allMixerStreams.add(mixerStreamHardware);
@@ -98,16 +101,18 @@ public class SoundSystem
         JSONArray devices = this.audioSettings.getJSONArray("devices");
         devices.forEach((dsn) -> {
             JSONObject jo = (JSONObject) dsn;
-            if (jo.has("execute") && jo.optString("type", "").equals("process"))
+            if (jo.has("name") && jo.has("execute") && jo.optString("type", "").equals("process"))
             {
-                MixerStreamProcess msp = new MixerStreamProcess(jo);
+                String mxName = jo.optString("name");
+                MixerStreamProcess msp = mixerProcessStreams.get(mxName);
+                if (msp == null)
+                {
+                    msp = new MixerStreamProcess(jo);
+                    mixerProcessStreams.put(mxName, msp);
+                }
                 if (!jo.optBoolean("disabled", false))
                     availableMixerStreams.add(msp);
                 allMixerStreams.add(msp);
-                if (jo.optBoolean("watch", false) || jo.optBoolean("autoRecord", false))
-                {
-                    msp.start();
-                }
             }
         });
     }
@@ -151,6 +156,13 @@ public class SoundSystem
         }
         this.audioSettings.put("devices", devices);
         return this.audioSettings;
+    }
+
+    public void stopMixer(int devId)
+    {
+        MixerStream mixerStream = this.availableMixerStreams.get(devId);
+        if (mixerStream != null)
+            mixerStream.stop();
     }
 
     public void openRecordingDeviceAndWriteTo(int devId, HttpServletRequest request, HttpServletResponse httpServletResponse) throws IOException

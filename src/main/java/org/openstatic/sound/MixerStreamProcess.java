@@ -80,30 +80,42 @@ public class MixerStreamProcess implements Runnable, MixerStream
     @Override
     public void start()
     {
-        try
+        if (!this.isAlive())
         {
-            this.format = new AudioFormat(
-                mixerSettings.optFloat("sampleRate", 44100),  // Sample Rate
-                mixerSettings.optInt("sampleSizeInBits", 16),     // Size of SampleBits
-                mixerSettings.optInt("channels", 1),      // Number of Channels
-                mixerSettings.optBoolean("signed", true),   // Is Signed?
-                mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
-            );
-            this.process = this.processBuilder.start();
-            this.processInputStream = this.process.getInputStream();
-            this.processOutputStream = this.process.getOutputStream();
-            this.myThread = new Thread(this);
-            this.myThread.setPriority(Thread.MAX_PRIORITY);
-            this.myThread.start();
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
+            try
+            {
+                this.format = new AudioFormat(
+                    mixerSettings.optFloat("sampleRate", 44100),  // Sample Rate
+                    mixerSettings.optInt("sampleSizeInBits", 16),     // Size of SampleBits
+                    mixerSettings.optInt("channels", 1),      // Number of Channels
+                    mixerSettings.optBoolean("signed", true),   // Is Signed?
+                    mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
+                );
+                this.process = this.processBuilder.start();
+                this.processInputStream = this.process.getInputStream();
+                this.processOutputStream = this.process.getOutputStream();
+                this.myThread = new Thread(this);
+                this.myThread.setPriority(Thread.MAX_PRIORITY);
+                this.myThread.start();
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
+            }
         }
     }
 
     public void stop()
     {
-        if (this.process.isAlive())
-            this.process.destroy();
+        if (this.process != null)
+        {
+            if (this.process.isAlive())
+                this.process.destroy();
+        }
+        this.silence = true;
+        if (!this.longSilence)
+        {
+            this.longSilence = true;
+            this.fireLongSilence();
+        }
     }
 
     public JSONObject getMixerSettings()
@@ -253,7 +265,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
             while(0 < (bytesRead = audioInputStream.read(rawInputBuffer))) 
             {
                 this.rms = calcRMS(rawInputBuffer, bytesRead);
-                if (this.rms < 0.1)
+                if (this.rms < this.mixerSettings.optDouble("rmsActivation",0.05))
                 {
                     if (!this.silence)
                     {

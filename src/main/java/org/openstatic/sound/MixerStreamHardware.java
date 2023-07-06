@@ -69,32 +69,48 @@ public class MixerStreamHardware implements Runnable, MixerStream
     @Override
     public void start()
     {
-        try
+        if (!this.isAlive())
         {
-            this.format = new AudioFormat(
-                mixerSettings.optFloat("sampleRate", 44100),  // Sample Rate
-                mixerSettings.optInt("sampleSizeInBits", 16),     // Size of SampleBits
-                mixerSettings.optInt("channels", 1),      // Number of Channels
-                mixerSettings.optBoolean("signed", true),   // Is Signed?
-                mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
-            );
-            this.mixer.open();
-            this.line = (TargetDataLine) AudioSystem.getTargetDataLine(this.format, this.mixerInfo);
-            line.open(format);
-            line.start();
-            this.myThread = new Thread(this);
-            this.myThread.setPriority(Thread.MAX_PRIORITY);
-            this.myThread.start();
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
+            try
+            {
+                this.format = new AudioFormat(
+                    mixerSettings.optFloat("sampleRate", 44100),  // Sample Rate
+                    mixerSettings.optInt("sampleSizeInBits", 16),     // Size of SampleBits
+                    mixerSettings.optInt("channels", 1),      // Number of Channels
+                    mixerSettings.optBoolean("signed", true),   // Is Signed?
+                    mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
+                );
+                this.mixer.open();
+                this.line = (TargetDataLine) AudioSystem.getTargetDataLine(this.format, this.mixerInfo);
+                line.open(format);
+                line.start();
+                this.myThread = new Thread(this);
+                this.myThread.setPriority(Thread.MAX_PRIORITY);
+                this.myThread.start();
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
+            }
         }
     }
 
     public void stop()
     {
-        if (this.line.isOpen())
-            this.line.close();
-        this.mixer.close();
+        try
+        {
+            if (this.line != null)
+            {
+                if (this.line.isOpen())
+                    this.line.close();
+            }
+            if (this.mixer.isOpen())
+                this.mixer.close();
+        } catch (Exception e) {}
+        this.silence = true;
+        if (!this.longSilence)
+        {
+            this.longSilence = true;
+            this.fireLongSilence();
+        }
     }
 
     public JSONObject getMixerSettings()
@@ -244,7 +260,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
             while(0 < (bytesRead = audioInputStream.read(rawInputBuffer))) 
             {
                 this.rms = calcRMS(rawInputBuffer, bytesRead);
-                if (this.rms < 0.1)
+                if (this.rms < this.mixerSettings.optDouble("rmsActivation",0.05))
                 {
                     if (!this.silence)
                     {

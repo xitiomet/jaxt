@@ -226,6 +226,10 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     infoPacket.put("state", JavaKISSMain.soundSystem.getAvailableStates());
                     infoPacket.put("timestamp", System.currentTimeMillis());
                     session.getRemote().sendStringByFuture(infoPacket.toString());
+                } else if (action.equals("stopaudio")) {
+                    int devId = j.optInt("devId", -1);
+                    if (devId >= 0)
+                        JavaKISSMain.soundSystem.stopMixer(devId);
                 } else if (action.equals("info")) {
                     broadcastINFO(j.optString("text", ""));
                 }

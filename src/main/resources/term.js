@@ -113,6 +113,13 @@ var commands = {
         },
         description: 'List Audio devcies',
     },
+    stopaudio: {
+        f: (args) => {
+          sendEvent({"action":"stopaudio", "devId": parseInt(args[0])});
+          prompt(term);
+        },
+        description: 'Stop an audio device (use lsaudio for dev#)',
+    },
     source: {
       f: (args) => {
         if (args.length > 0)
@@ -413,7 +420,6 @@ function setupWebsocket()
                         term.writeln("");
                         a++;
                     }
-                    term.writeln("");
                     prompt(term);
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
