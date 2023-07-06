@@ -57,7 +57,7 @@ function prompt(term)
 {
     command = '';
     if (sourceCallsign == "")
-       term.write('\r\n$ ');
+       term.write('\r\n\x1B[0;91m@' + jaxtHostname + '\x1B[0m$ ');
     else
        term.write('\r\n\x1B[0;93m' + sourceCallsign + '\x1B[0;91m@' + jaxtHostname + '\x1B[0m$ ');
 }
@@ -397,7 +397,16 @@ function setupWebsocket()
                     term.writeln("-- Input --");
                     for(devname of jsonObject.recording)
                     {
-                        term.writeln(a + ": " + devname);
+                        term.write(a + ": " + devname);
+                        if (jsonObject.activeRecording.hasOwnProperty(devname))
+                        {
+                            term.write(" \x1B[0;92m(Active)\x1B[0m");
+                            if (jsonObject.activeRecording[devname]['autoRecord'] == true)
+                            {
+                                term.write(" \x1B[0;91m(A-REC)\x1B[0m");
+                            }
+                        }
+                        term.writeln("");
                         a++;
                     }
                     term.writeln("");
@@ -405,7 +414,12 @@ function setupWebsocket()
                     var b = 0;
                     for(devname of jsonObject.playback)
                     {
-                        term.writeln(b + ": " + devname);
+                        term.write(b + ": " + devname);
+                        if (jsonObject.activePlayback.hasOwnProperty(devname))
+                        {
+                            term.write(" \x1B[0;92m(Active)\x1B[0m");
+                        }
+                        term.writeln("");
                         b++;
                     }
                     prompt(term);

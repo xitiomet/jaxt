@@ -25,6 +25,7 @@ public class SoundSystem
     ArrayList<Mixer.Info> outputMixers;
     HashMap<Mixer.Info, MixerStream> mixerStreams;
     HashMap<Mixer.Info, String> mixerNames;
+    HashMap<String, Mixer.Info> mixerKeys;
     HashMap<Mixer.Info, JSONObject> mixerSettings;
 
     JSONObject audioSettings;
@@ -42,6 +43,7 @@ public class SoundSystem
         this.inputMixers = new ArrayList<Mixer.Info>();
         this.outputMixers = new ArrayList<Mixer.Info>();
         this.mixerNames = new HashMap<Mixer.Info, String>();
+        this.mixerKeys = new HashMap<String, Mixer.Info>();
         this.mixerSettings = new HashMap<Mixer.Info, JSONObject>();
 
         boolean hideUndefined = this.audioSettings.optBoolean("hideUndefined", false);
@@ -58,17 +60,13 @@ public class SoundSystem
         for (Mixer.Info mixerInfo : mixers)
         {
             Mixer m = AudioSystem.getMixer(mixerInfo);
-            //System.err.println(mixerInfo.getName());
-            //System.err.println(mixerInfo.getDescription());
             try
             {
                 
                 Line.Info[] sourceLines = m.getSourceLineInfo();
-                //System.err.println ("Source Lines: " + String.valueOf(sourceLines.length));
                 int slc = 0;
                 for (Line.Info li : sourceLines)
                 {
-                    //System.err.println(li.getLineClass().toString());
                     if (li.getLineClass().toString().equals("interface javax.sound.sampled.SourceDataLine"))
                         slc++;
                 }
@@ -82,6 +80,7 @@ public class SoundSystem
                         if (mixerName.contains(key))
                         {
                             mSettings = definedDevices.get(key);
+                            mixerKeys.put(key, mixerInfo);
                             defined = true;
                         }
                     }
@@ -93,11 +92,9 @@ public class SoundSystem
                     }
                 }
                 Line.Info[] targetLines = m.getTargetLineInfo();
-                //System.err.println ("Target Lines: " + String.valueOf(targetLines.length));
                 int tlc = 0;
                 for (Line.Info li : targetLines)
                 {
-                    //System.err.println(li.getLineClass().toString());
                     if (li.getLineClass().toString().equals("interface javax.sound.sampled.TargetDataLine"))
                         tlc++;
                 }
@@ -111,6 +108,7 @@ public class SoundSystem
                         if (mixerName.contains(key))
                         {
                             mSettings = definedDevices.get(key);
+                            mixerKeys.put(key, mixerInfo);
                             defined = true;
                         }
                     }
@@ -129,7 +127,6 @@ public class SoundSystem
             } catch (Exception e) {
                 e.printStackTrace(System.err);
             }
-            //System.err.println("");
         }
     }
 
@@ -156,6 +153,48 @@ public class SoundSystem
         }
         return ra;
     }
+
+    public JSONObject getActiveRecordingDevices()
+    {
+        JSONObject ro = new JSONObject();
+        Iterator<Mixer.Info> mixerIterator = this.mixerStreams.keySet().iterator();
+        while(mixerIterator.hasNext())
+        {
+            Mixer.Info mixer = mixerIterator.next();
+            if (this.inputMixers.contains(mixer))
+                ro.put(mixerNames.getOrDefault(mixer, mixer.getName()), this.mixerStreams.get(mixer).getMixerSettings());
+        }
+        return ro;
+    }
+
+    public JSONObject getActivePlaybackDevices()
+    {
+        JSONObject ro = new JSONObject();
+        Iterator<Mixer.Info> mixerIterator = this.mixerStreams.keySet().iterator();
+        while(mixerIterator.hasNext())
+        {
+            Mixer.Info mixer = mixerIterator.next();
+            if (this.outputMixers.contains(mixer))
+                ro.put(mixerNames.getOrDefault(mixer, mixer.getName()), this.mixerStreams.get(mixer).getMixerSettings());
+        }
+        return ro;
+    }
+
+    public JSONObject getAudioSettings()
+    {
+        JSONObject devices = new JSONObject();
+        for(String mixerKey : this.mixerKeys.keySet())
+        {
+            Mixer.Info mixerInfo = this.mixerKeys.get(mixerKey);
+            if (!mixerStreams.containsKey(mixerKey))
+                devices.put(mixerKey,mixerSettings.get(mixerInfo));
+            else
+                devices.put(mixerKey,mixerStreams.get(mixerInfo).getMixerSettings());
+        }
+        this.audioSettings.put("devices", devices);
+        return this.audioSettings;
+    }
+
     
     public synchronized MixerStream getMixerStream(Mixer.Info mixerInfo) throws LineUnavailableException
     {
@@ -169,6 +208,10 @@ public class SoundSystem
         {
             mixerStream = new MixerStream(mixerInfo, mixerSettings.get(mixerInfo));
             this.mixerStreams.put(mixerInfo, mixerStream);
+        }
+        if (!mixerKeys.containsValue(mixerInfo))
+        {
+            mixerKeys.put(mixerInfo.getName(), mixerInfo);
         }
         return mixerStream;
     }

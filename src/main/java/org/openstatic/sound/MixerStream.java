@@ -70,6 +70,11 @@ public class MixerStream implements Runnable
         this.myThread.start();
     }
 
+    public JSONObject getMixerSettings()
+    {
+        return this.mixerSettings;
+    }
+
     public String getMixerName()
     {
         return this.mixerSettings.optString("rename", mixer.getMixerInfo().getName());
@@ -132,6 +137,11 @@ public class MixerStream implements Runnable
         return rms;
     }
 
+    public void setAutoRecord(boolean v)
+    {
+        this.mixerSettings.put("autoRecord", v);
+    }
+
     private void fireLongSilence()
     {
         Thread t = new Thread(() -> {
@@ -162,7 +172,6 @@ public class MixerStream implements Runnable
     private void fireSilenceBroken()
     {
         Thread t = new Thread(() -> {
-            JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
             if (mixerSettings.optBoolean("autoRecord", false) && JavaKISSMain.logsFolder != null)
             {
                 File mixerFolder = new File(JavaKISSMain.logsFolder, this.getMixerName());
@@ -171,11 +180,13 @@ public class MixerStream implements Runnable
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HHmmss");
                 String mp3Name = simpleDateFormat.format(new Date(System.currentTimeMillis())) + ".mp3";
                 this.recordingFile = new File(mixerFolder, mp3Name);
-                JavaKISSMain.mainLog("[RECORDING] " + this.recordingFile.getName());
+                JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName() + " - RECORDING " + this.recordingFile.getName());
                 try
                 {
                     this.recordingOutputStream = new FileOutputStream(this.recordingFile);
                 } catch (Exception e) {}
+            } else {
+                JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
             }
         });
         t.start();

@@ -336,7 +336,7 @@ function logRecording(jsonObject)
     var divId = jsonObject.uri + "_" + d.getTime();
     if (document.getElementById(divId) == undefined)
     {
-        var line =  "<div id=\"" + divId + "\" style=\"color: #FF5733;\">( REC " + getDTString(d) + ") " + jsonObject.name + " <a href=\"" + jsonObject.uri + "\" target=\"_blank\">(Download)</a> <a href=\"#\" onclick=\"playAudio('" + jsonObject.uri + "')\">(Listen)</a> ";
+        var line =  "<div id=\"" + divId + "\" style=\"color: #FF5733;\">( REC " + getDTString(d) + ") " + jsonObject.name + " <a href=\"" + jsonObject.uri + "\" target=\"_blank\">(Download)</a> <a href=\"#\" onclick=\"playAudio('" + jsonObject.uri + "');event.preventDefault();\">(Listen)</a> ";
         line += "</div>";
         console.innerHTML += line;
         window.scrollTo(0,document.body.scrollHeight);

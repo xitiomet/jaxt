@@ -224,6 +224,8 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     infoPacket.put("action", "lsaudio");
                     infoPacket.put("recording", JavaKISSMain.soundSystem.getRecordingDevices());
                     infoPacket.put("playback", JavaKISSMain.soundSystem.getPlaybackDevices());
+                    infoPacket.put("activeRecording", JavaKISSMain.soundSystem.getActiveRecordingDevices());
+                    infoPacket.put("activePlayback", JavaKISSMain.soundSystem.getActivePlaybackDevices());
                     infoPacket.put("timestamp", System.currentTimeMillis());
                     session.getRemote().sendStringByFuture(infoPacket.toString());
                 } else if (action.equals("info")) {
@@ -535,6 +537,8 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 } else if (target.equals("/audio/")) {
                     response.put("recording", JavaKISSMain.soundSystem.getRecordingDevices());
                     response.put("playback", JavaKISSMain.soundSystem.getPlaybackDevices());
+                    response.put("activeRecording", JavaKISSMain.soundSystem.getActiveRecordingDevices());
+                    response.put("activePlayback", JavaKISSMain.soundSystem.getActivePlaybackDevices());
                 } else if (target.equals("/stream/")) {
                     int devId = Integer.valueOf(request.getParameter("devId")).intValue();
                     try

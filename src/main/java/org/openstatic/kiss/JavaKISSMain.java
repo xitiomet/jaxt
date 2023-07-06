@@ -391,7 +391,10 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         if (JavaKISSMain.settings.has("txTest"))
             JavaKISSMain.settings.remove("txTest");
         if (JavaKISSMain.settingsFile != null)
+        {
+            JavaKISSMain.settings.put("audio", JavaKISSMain.soundSystem.getAudioSettings());
             saveJSONObject(JavaKISSMain.settingsFile, JavaKISSMain.settings);
+        }
     }
 
     public static JSONObject loadJSONObject(File file)
