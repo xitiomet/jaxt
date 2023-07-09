@@ -230,6 +230,10 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     int devId = j.optInt("devId", -1);
                     if (devId >= 0)
                         JavaKISSMain.soundSystem.stopMixer(devId);
+                } else if (action.equals("startaudio")) {
+                    int devId = j.optInt("devId", -1);
+                    if (devId >= 0)
+                        JavaKISSMain.soundSystem.startMixer(devId);
                 } else if (action.equals("info")) {
                     broadcastINFO(j.optString("text", ""));
                 }

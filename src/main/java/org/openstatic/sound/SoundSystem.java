@@ -164,10 +164,12 @@ public class SoundSystem
     public void shutdown()
     {
         this.mixerHardwareStreams.forEach((k,v) -> {
-            v.stop();
+            if (v.isAlive())
+                v.stop();
         });
         this.mixerProcessStreams.forEach((k,v) -> {
-            v.stop();
+            if (v.isAlive())
+                v.stop();
         });
     }
 
@@ -175,7 +177,18 @@ public class SoundSystem
     {
         MixerStream mixerStream = this.availableMixerStreams.get(devId);
         if (mixerStream != null)
+        {
             mixerStream.stop();
+        }
+    }
+
+    public void startMixer(int devId)
+    {
+        MixerStream mixerStream = this.availableMixerStreams.get(devId);
+        if (mixerStream != null)
+        {
+            mixerStream.start();
+        }
     }
 
     public void openRecordingDeviceAndWriteTo(int devId, HttpServletRequest request, HttpServletResponse httpServletResponse) throws IOException

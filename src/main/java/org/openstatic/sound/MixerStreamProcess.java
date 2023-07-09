@@ -106,16 +106,29 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     public void stop()
     {
-        if (this.process != null)
+        if (this.processInputStream != null)
         {
-            if (this.process.isAlive())
-                this.process.destroyForcibly();
+            try
+            {
+                this.processInputStream.close();
+            } catch (Exception cise) {}
+        }
+         if (this.processOutputStream != null)
+        {
+            try
+            {
+                this.processOutputStream.close();
+            } catch (Exception cose) {}
         }
         this.silence = true;
         if (!this.longSilence)
         {
             this.longSilence = true;
             this.fireLongSilence();
+        }
+        if (this.process != null)
+        {
+            this.process.destroy();
         }
     }
 
@@ -277,7 +290,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
             int bytesRead;
             int bytesWritten;
 
-            while(0 < (bytesRead = audioInputStream.read(rawInputBuffer))) 
+            while(0 < (bytesRead = audioInputStream.read(rawInputBuffer)) && this.process.isAlive()) 
             {
                 this.rms = calcRMS(rawInputBuffer, bytesRead);
                 if (this.rms < this.mixerSettings.optDouble("rmsActivation",0.05))

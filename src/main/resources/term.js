@@ -120,6 +120,13 @@ var commands = {
         },
         description: 'Stop an audio device (use lsaudio for dev#)',
     },
+    startaudio: {
+        f: (args) => {
+          sendEvent({"action":"startaudio", "devId": parseInt(args[0])});
+          prompt(term);
+        },
+        description: 'Start an audio device (use lsaudio for dev#)',
+    },
     source: {
       f: (args) => {
         if (args.length > 0)
@@ -318,7 +325,7 @@ function runFakeTerminal()
                 {
                     if (cmd.startsWith(command))
                     {
-                        var finishCmd = cmd.substr(command.length);
+                        var finishCmd = cmd.substr(command.length) + ' ';
                         term.write(finishCmd);
                         command += finishCmd;
                     }
@@ -408,6 +415,14 @@ function setupWebsocket()
                         if (jsonObject.state.hasOwnProperty(devname))
                         {
                             var stateObj = jsonObject.state[devname];
+                            if (stateObj.canBeRecorded == true && stateObj.canPlayTo == true)
+                            {
+                               term.write(" \x1B[0;96m(IN/OUT)\x1B[0m");
+                            } else if (stateObj.canBeRecorded == false && stateObj.canPlayTo == true) {
+                               term.write(" \x1B[0;96m(OUT)\x1B[0m");
+                            } else if (stateObj.canBeRecorded == true && stateObj.canPlayTo == false) {
+                                term.write(" \x1B[0;96m(IN)\x1B[0m");
+                            }
                             if (stateObj.isAlive == true)
                             {
                                term.write(" \x1B[0;92m(Monitored)\x1B[0m");

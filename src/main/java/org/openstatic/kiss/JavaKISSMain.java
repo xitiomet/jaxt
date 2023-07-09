@@ -250,8 +250,9 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             { 
                 public void run() 
                 {
-                    soundSystem.shutdown();
+                    JavaKISSMain.soundSystem.shutdown();
                     saveSettings();
+                    System.err.println("Shutdown Complete");
                 }
             });
             kClient.connect();
