@@ -168,6 +168,34 @@ public class MixerStreamHardware implements Runnable, MixerStream
             return false;
     }
 
+    private void rmsEvents()
+    {
+        if (this.rms < this.mixerSettings.optDouble("rmsActivation",0.05))
+        {
+            if (!this.silence)
+            {
+                this.silence = true;
+                this.silenceStartAt = System.currentTimeMillis();
+            }
+        } else {
+            if (this.silence)
+            {
+                this.silence = false;
+            }
+        }
+        if (this.silence && !this.longSilence)
+        {
+            if ((System.currentTimeMillis() - this.silenceStartAt) > this.mixerSettings.optLong("silenceTimeout", 5000))
+            {
+                this.longSilence = true;
+                fireLongSilence();
+            }
+        } else if (!this.silence && this.longSilence) {
+            this.longSilence = false;
+            fireSilenceBroken();
+        }
+    }
+
     public static double calcRMS(byte[] data, int numBytesRead)
     {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -274,30 +302,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
             while(0 < (bytesRead = audioInputStream.read(rawInputBuffer))) 
             {
                 this.rms = calcRMS(rawInputBuffer, bytesRead);
-                if (this.rms < this.mixerSettings.optDouble("rmsActivation",0.05))
-                {
-                    if (!this.silence)
-                    {
-                        this.silence = true;
-                        this.silenceStartAt = System.currentTimeMillis();
-                    }
-                } else {
-                    if (this.silence)
-                    {
-                        this.silence = false;
-                    }
-                }
-                if (this.silence && !this.longSilence)
-                {
-                    if ((System.currentTimeMillis() - this.silenceStartAt) > this.mixerSettings.optLong("silenceTimeout", 5000))
-                    {
-                        this.longSilence = true;
-                        fireLongSilence();
-                    }
-                } else if (!this.silence && this.longSilence) {
-                    this.longSilence = false;
-                    fireSilenceBroken();
-                }
+                this.rmsEvents();
                 bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
                 for (OutputStream outputMp3Stream : (ArrayList<OutputStream>) this.outputMp3.clone()) 
                 {

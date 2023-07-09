@@ -192,14 +192,11 @@ const listenApp = {
         console.log("Streaming: " + audioUrl);
         playingAudio = new Audio(audioUrl);
         playingAudio.loop = true;
-        playingAudio.onended = () => {
-            term.writeln("Stream Ended");
-        };
         playingAudio.onplay = () => {
             term.writeln("Stream Playing");
         }
         playingAudio.onerror = () => {
-            term.writeln("Stream Error");
+            //term.writeln("Stream Error");
         }
         playingAudio.play();
         term.writeln("Listen (press ctrl-c to stop)");
