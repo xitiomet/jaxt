@@ -46,6 +46,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private JSONObject mixerSettings;
     private File recordingFile;
     private FileOutputStream recordingOutputStream;
+    private long recordingStart;
     private OutputStream processOutputStream;
     private InputStream processInputStream;
     private AudioFormat format;
@@ -108,7 +109,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
         if (this.process != null)
         {
             if (this.process.isAlive())
-                this.process.destroy();
+                this.process.destroyForcibly();
         }
         this.silence = true;
         if (!this.longSilence)
@@ -205,18 +206,31 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 {
                     this.recordingOutputStream.close();
                 } catch (Exception e) {}
-                if (JavaKISSMain.apiWebServer != null)
+                long recordingDuration =  this.silenceStartAt - this.recordingStart;
+                
+                if (recordingDuration >= this.mixerSettings.optLong("minimumRecordDuration", 500))
                 {
-                    JSONObject recordingEvent = new JSONObject();
-                    recordingEvent.put("action", "recording");
-                    recordingEvent.put("name", this.recordingFile.getName());
-                    recordingEvent.put("timestamp", System.currentTimeMillis());
-                    recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
-                    JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
-                    JavaKISSMain.apiWebServer.addHistory(recordingEvent);
+                    if (JavaKISSMain.apiWebServer != null)
+                    {
+                        JSONObject recordingEvent = new JSONObject();
+                        recordingEvent.put("action", "recording");
+                        recordingEvent.put("name", this.recordingFile.getName());
+                        recordingEvent.put("timestamp", System.currentTimeMillis());
+                        recordingEvent.put("duration",recordingDuration);
+                        recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
+                        JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
+                        JavaKISSMain.apiWebServer.addHistory(recordingEvent);
+                    }
+                } else {
+                    try
+                    {
+                        // delete small recording
+                        this.recordingFile.delete();
+                    } catch (Exception dr) {}
                 }
                 this.recordingFile = null;
                 this.recordingOutputStream = null;
+                this.recordingStart = 0;
             }
         });
         t.start();
@@ -233,10 +247,11 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HHmmss");
                 String mp3Name = simpleDateFormat.format(new Date(System.currentTimeMillis())) + ".mp3";
                 this.recordingFile = new File(mixerFolder, mp3Name);
-                JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName() + " - RECORDING " + this.recordingFile.getName());
+                JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName() + " - RECORDING");
                 try
                 {
                     this.recordingOutputStream = new FileOutputStream(this.recordingFile);
+                    this.recordingStart = System.currentTimeMillis();
                 } catch (Exception e) {}
             } else {
                 JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());

@@ -33,7 +33,7 @@ public class SoundSystem
         refreshMixers();
         this.availableMixerStreams.forEach((mixerStream) -> {
             JSONObject mixerStreamSettings = mixerStream.getMixerSettings();
-            if (mixerStreamSettings.optBoolean("watch", false) || mixerStreamSettings.optBoolean("autoRecord", false))
+            if (mixerStreamSettings.optBoolean("autoStart", false))
             {
                 if (!mixerStream.isAlive())
                     mixerStream.start();
@@ -98,23 +98,26 @@ public class SoundSystem
                 e.printStackTrace(System.err);
             }
         }
-        JSONArray devices = this.audioSettings.getJSONArray("devices");
-        devices.forEach((dsn) -> {
-            JSONObject jo = (JSONObject) dsn;
-            if (jo.has("name") && jo.has("execute") && jo.optString("type", "").equals("process"))
-            {
-                String mxName = jo.optString("name");
-                MixerStreamProcess msp = mixerProcessStreams.get(mxName);
-                if (msp == null)
+        JSONArray devices = this.audioSettings.optJSONArray("devices");
+        if (devices != null)
+        {
+            devices.forEach((dsn) -> {
+                JSONObject jo = (JSONObject) dsn;
+                if (jo.has("name") && jo.has("execute") && jo.optString("type", "").equals("process"))
                 {
-                    msp = new MixerStreamProcess(jo);
-                    mixerProcessStreams.put(mxName, msp);
+                    String mxName = jo.optString("name");
+                    MixerStreamProcess msp = mixerProcessStreams.get(mxName);
+                    if (msp == null)
+                    {
+                        msp = new MixerStreamProcess(jo);
+                        mixerProcessStreams.put(mxName, msp);
+                    }
+                    if (!jo.optBoolean("disabled", false))
+                        availableMixerStreams.add(msp);
+                    allMixerStreams.add(msp);
                 }
-                if (!jo.optBoolean("disabled", false))
-                    availableMixerStreams.add(msp);
-                allMixerStreams.add(msp);
-            }
-        });
+            });
+        }
     }
 
     public JSONArray getAvailableDevices()
@@ -156,6 +159,16 @@ public class SoundSystem
         }
         this.audioSettings.put("devices", devices);
         return this.audioSettings;
+    }
+
+    public void shutdown()
+    {
+        this.mixerHardwareStreams.forEach((k,v) -> {
+            v.stop();
+        });
+        this.mixerProcessStreams.forEach((k,v) -> {
+            v.stop();
+        });
     }
 
     public void stopMixer(int devId)

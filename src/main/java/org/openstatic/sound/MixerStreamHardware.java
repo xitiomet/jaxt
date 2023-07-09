@@ -45,6 +45,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
     private JSONObject mixerSettings;
     private File recordingFile;
     private FileOutputStream recordingOutputStream;
+    private long recordingStart;
 
     public MixerStreamHardware(Mixer.Info mixerInfo, JSONObject mixerSettings)
     {
@@ -200,18 +201,30 @@ public class MixerStreamHardware implements Runnable, MixerStream
                 {
                     this.recordingOutputStream.close();
                 } catch (Exception e) {}
-                if (JavaKISSMain.apiWebServer != null)
+                long recordingDuration = this.silenceStartAt - this.recordingStart;
+                if (recordingDuration >= this.mixerSettings.optLong("minimumRecordDuration", 500))
                 {
-                    JSONObject recordingEvent = new JSONObject();
-                    recordingEvent.put("action", "recording");
-                    recordingEvent.put("name", this.recordingFile.getName());
-                    recordingEvent.put("timestamp", System.currentTimeMillis());
-                    recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
-                    JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
-                    JavaKISSMain.apiWebServer.addHistory(recordingEvent);
+                    if (JavaKISSMain.apiWebServer != null)
+                    {
+                        JSONObject recordingEvent = new JSONObject();
+                        recordingEvent.put("action", "recording");
+                        recordingEvent.put("name", this.recordingFile.getName());
+                        recordingEvent.put("timestamp", System.currentTimeMillis());
+                        recordingEvent.put("duration",recordingDuration);
+                        recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
+                        JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
+                        JavaKISSMain.apiWebServer.addHistory(recordingEvent);
+                    }
+                } else {
+                    try
+                    {
+                        // delete small recording
+                        this.recordingFile.delete();
+                    } catch (Exception dr) {}
                 }
                 this.recordingFile = null;
                 this.recordingOutputStream = null;
+                this.recordingStart = 0;
             }
         });
         t.start();
@@ -232,6 +245,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
                 try
                 {
                     this.recordingOutputStream = new FileOutputStream(this.recordingFile);
+                    this.recordingStart = System.currentTimeMillis();
                 } catch (Exception e) {}
             } else {
                 JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());

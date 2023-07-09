@@ -410,7 +410,7 @@ function setupWebsocket()
                             var stateObj = jsonObject.state[devname];
                             if (stateObj.isAlive == true)
                             {
-                               term.write(" \x1B[0;92m(Active)\x1B[0m");
+                               term.write(" \x1B[0;92m(Monitored)\x1B[0m");
                             }
                             if (stateObj['settings']['autoRecord'] == true)
                             {
