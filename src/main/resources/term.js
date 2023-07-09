@@ -191,12 +191,18 @@ const listenApp = {
         var audioUrl = "/jaxt/api/stream/?termAuth=" + encodeURIComponent(termAuth) + "&devId=" + encodeURIComponent(args[0]);
         console.log("Streaming: " + audioUrl);
         playingAudio = new Audio(audioUrl);
+        playingAudio.loop = true;
+        playingAudio.onended = () => {
+            term.writeln("Stream Ended");
+        };
+        playingAudio.onplay = () => {
+            term.writeln("Stream Playing");
+        }
         playingAudio.onerror = () => {
-            prompt(term);
-            runningApp = null;
+            term.writeln("Stream Error");
         }
         playingAudio.play();
-        term.writeln("Streaming Audio (press ctrl-c to stop)");
+        term.writeln("Listen (press ctrl-c to stop)");
     },
     stop: () => {
         try

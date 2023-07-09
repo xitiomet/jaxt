@@ -90,9 +90,9 @@ function doAuth()
 
 function playAudio(uri)
 {
-    var audioElement = document.getElementById('audioElement');
-    audioElement.src = uri;
-    audioElement.play();
+    var audioClipElement = document.getElementById('audioClipElement');
+    audioClipElement.src = uri;
+    audioClipElement.play();
 }
 
 function listenClick(devId)

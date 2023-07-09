@@ -289,7 +289,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
                 }
                 if (this.silence && !this.longSilence)
                 {
-                    if ((System.currentTimeMillis() - this.silenceStartAt) > 5000)
+                    if ((System.currentTimeMillis() - this.silenceStartAt) > this.mixerSettings.optLong("silenceTimeout", 5000))
                     {
                         this.longSilence = true;
                         fireLongSilence();
