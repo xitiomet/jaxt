@@ -332,6 +332,10 @@ public class MixerStreamHardware implements Runnable, MixerStream
                         outputRaw.remove(rawInputBuffer);
                     }
                 }
+                try
+                {
+                    Thread.sleep(50);
+                } catch (Exception e) {}
             }
 
             encoder.close();

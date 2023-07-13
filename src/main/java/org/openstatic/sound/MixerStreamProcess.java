@@ -359,6 +359,10 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 } else {
                     this.rms = 0;
                     rmsEvents();
+                    try
+                    {
+                        Thread.sleep(50);
+                    } catch (InterruptedException iex) {}
                 }
             }
             encoder.close();
