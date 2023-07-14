@@ -2,10 +2,22 @@
   "resources":{
   "includes":[
     {
+      "pattern":"\\QLinux/x86_64/libjSerialComm.so\\E"
+    }, 
+    {
       "pattern":"\\QMETA-INF/services/org.eclipse.jetty.http.HttpFieldPreEncoder\\E"
     }, 
     {
       "pattern":"\\QMETA-INF/services/org.eclipse.jetty.websocket.api.extensions.Extension\\E"
+    }, 
+    {
+      "pattern":"\\QWindows/aarch64/jSerialComm.dll\\E"
+    }, 
+    {
+      "pattern":"\\QWindows/armv7/jSerialComm.dll\\E"
+    }, 
+    {
+      "pattern":"\\QWindows/x86_64/jSerialComm.dll\\E"
     }, 
     {
       "pattern":"\\Qjaxt/about.png\\E"

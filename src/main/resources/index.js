@@ -8,6 +8,7 @@ var wsProtocol = 'ws';
 var httpUrl = '';
 var termAuth = '';
 var playingDevice = -1;
+var playingStream = null;
 
 function getParameterByName(name, url = window.location.href) 
 {
@@ -108,11 +109,13 @@ function listenClick(devId)
         audioElement.src = streamUrl;
         audioElement.play();
         playingDevice = devId;
+        playingStream = streamUrl;
     } else {
         console.log("Closing Stream: " + audioElement.src);
         audioElement.src = "";
         document.getElementById('speakerButton').style.backgroundColor = 'black';
         playingDevice = -1;
+        playingStream = null;
     }
 }
 
@@ -247,6 +250,7 @@ function setupWebsocket()
                     if (playingDevice == jsonObject.devId)
                     {
                         var audioElement = document.getElementById('audioElement');
+                        audioElement.src = playingStream;
                         audioElement.load();
                         audioElement.play(); 
                     }
@@ -395,8 +399,11 @@ window.onload = function() {
     };
     audioElement.onerror = function() {
         document.getElementById('speakerButton').style.backgroundColor = 'black';
-        if (audioElement.src != '')
+        if (playingStream != null)
+        {
+            audioElement.src = playingStream;
             audioElement.play();
+        }
     };
     audioElement.onended = function() {
         document.getElementById('speakerButton').style.backgroundColor = 'black';

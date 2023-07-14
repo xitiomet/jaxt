@@ -1,5 +1,6 @@
 package org.openstatic.sound;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,11 +12,15 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
+import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
+import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.TargetDataLine;
 
 import org.json.JSONObject;
@@ -30,7 +35,7 @@ import javax.sound.sampled.AudioInputStream;
 
 public class MixerStreamHardware implements Runnable, MixerStream
 {
-    private TargetDataLine line;
+    private TargetDataLine targetLine;
     private AudioFormat format;
     private Mixer.Info mixerInfo;
     private Mixer mixer;
@@ -82,9 +87,9 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
                 );
                 this.mixer.open();
-                this.line = (TargetDataLine) AudioSystem.getTargetDataLine(this.format, this.mixerInfo);
-                line.open(format);
-                line.start();
+                this.targetLine = (TargetDataLine) AudioSystem.getTargetDataLine(this.format, this.mixerInfo);
+                targetLine.open(format);
+                targetLine.start();
                 this.myThread = new Thread(this);
                 this.myThread.setPriority(Thread.MAX_PRIORITY);
                 this.myThread.start();
@@ -98,10 +103,10 @@ public class MixerStreamHardware implements Runnable, MixerStream
     {
         try
         {
-            if (this.line != null)
+            if (this.targetLine != null)
             {
-                if (this.line.isOpen())
-                    this.line.close();
+                if (this.targetLine.isOpen())
+                    this.targetLine.close();
             }
             if (this.mixer.isOpen())
                 this.mixer.close();
@@ -291,7 +296,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
         startPacket.put("devId", JavaKISSMain.soundSystem.availableMixerStreams.indexOf(this));
         if (JavaKISSMain.apiWebServer != null)
             JavaKISSMain.apiWebServer.broadcastJSONObject(startPacket);
-        AudioInputStream audioInputStream = new AudioInputStream(this.line);
+        AudioInputStream audioInputStream = new AudioInputStream(this.targetLine);
         try
         {
             boolean USE_VARIABLE_BITRATE = false;
@@ -348,8 +353,8 @@ public class MixerStreamHardware implements Runnable, MixerStream
             // totally fine
             //e.printStackTrace(System.err);
         } finally {
-            this.line.stop();
-            this.line.close();
+            this.targetLine.stop();
+            this.targetLine.close();
         }
         this.listeners.forEach((l) -> l.onShutdown(this));
         JSONObject stopPacket = new JSONObject();
@@ -358,6 +363,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
         if (JavaKISSMain.apiWebServer != null)
             JavaKISSMain.apiWebServer.broadcastJSONObject(stopPacket);
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.mixer.getMixerInfo().getName() + ")");
+        this.setPTT(false);
     }
 
     @Override
@@ -406,5 +412,64 @@ public class MixerStreamHardware implements Runnable, MixerStream
             }
         });
         t.start();
+    }
+
+    @Override
+    public void setPTT(boolean v)
+    {
+        if (this.mixerSettings.has("ptt"))
+        {
+            JSONObject pttObject = this.mixerSettings.optJSONObject("ptt");
+            if (pttObject.has("type"))
+            {
+                String pttType = pttObject.optString("type", "");
+                if (pttType.equals("rts") && pttObject.has("serialPort"))
+                {
+                    String serialPort = pttObject.optString("serialPort");
+                    JavaKISSMain.serialSystem.setRTS(serialPort, v);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void play(byte[] clipData) 
+    {
+        if (this.canPlayTo())
+        {
+            Thread t = new Thread(() -> {
+                try
+                {
+                    ByteArrayInputStream bais = new ByteArrayInputStream(clipData);
+                    // determine the format
+                    AudioFormat aff = AudioSystem.getAudioFileFormat(bais).getFormat();
+                    // reset the stream
+                    bais.reset();
+                    // create AIS in the orginal format
+                    AudioInputStream fAIS = new AudioInputStream(bais, aff, AudioSystem.NOT_SPECIFIED);
+                    // create AIS in the target format
+                    AudioInputStream ais = AudioSystem.getAudioInputStream(this.format, fAIS);
+
+                    Clip clip = (Clip) AudioSystem.getClip(this.mixerInfo);
+                    clip.open(ais);
+                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                    gainControl.setValue(1.0f);
+                    this.setPTT(true);
+
+                    clip.start();
+                    Thread.sleep(1000);
+                    while(clip.isActive())
+                    {
+                        Thread.sleep(1000);
+                    }
+                    clip.flush();
+                    clip.close();
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }
+                this.setPTT(false);
+            });
+            t.start();
+        }
     }
 }

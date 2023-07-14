@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.cli.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openstatic.serial.SerialSystem;
 import org.openstatic.sound.SoundSystem;
 
 public class JavaKISSMain implements AX25PacketListener, Runnable
@@ -41,6 +42,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     public static File settingsFile;
     public static APIWebServer apiWebServer;
     public static SoundSystem soundSystem;
+    public static SerialSystem serialSystem;
 
     public JavaKISSMain(KISSClient client)
     {
@@ -79,6 +81,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         org.eclipse.jetty.util.log.Log.setLog(new NoLogging());
         //System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
+        System.setProperty("org.eclipse.jetty.server.Request.maxFormContentSize","1000000000");
         //org.eclipse.jetty.util.log.Log.getProperties().setProperty("org.eclipse.jetty.util.log.announce", "false");
 
         CommandLine cmd = null;
@@ -213,6 +216,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             JavaKISSMain jkm = new JavaKISSMain(kClient);
             JavaKISSMain.logAppend("main.log", "[STARTED]");
             JavaKISSMain.soundSystem = new SoundSystem();
+            JavaKISSMain.serialSystem = new SerialSystem();
             saveSettings();
             if (settings.has("terminal"))
             {

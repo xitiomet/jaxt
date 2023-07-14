@@ -35,6 +35,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.sound.sampled.spi.AudioFileReader;
 
 import org.eclipse.jetty.server.Server;
 
@@ -490,21 +491,46 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     String target = request.getPathInfo();
                     //System.err.println("Path: " + target);
                     JSONObject response = new JSONObject();
-                    JSONObject requestPost = readJSONObjectPOST(request);
-                    if (JavaKISSMain.settings.optString("apiPassword","").equals(requestPost.optString("apiPassword","")) || APIWebServer.instance.validateTermAuth(requestPost.optString("termAuth",null)))
-                    {       
+                    if (request.getContentType().equals("text/javascript") || request.getContentType().equals("text/json"))
+                    {
+                        JSONObject requestPost = readJSONObjectPOST(request);
+                        if (JavaKISSMain.settings.optString("apiPassword","").equals(requestPost.optString("apiPassword","")) || APIWebServer.instance.validateTermAuth(requestPost.optString("termAuth",null)))
+                        {       
+                            try {
+                                if (target.equals("/transmit/"))
+                                {
+                                    AX25Packet packet = new AX25Packet(requestPost);
+                                    APIWebServer.instance.kClient.send(packet);
+                                    response.put("transmitted", packet.toJSONObject());
+                                }
+                            } catch (Exception x) {
+                                x.printStackTrace(System.err);
+                            }
+                        } else {
+                            response.put("error", "Invalid apiPassword or termAuth!");
+                        }
+                    } else if (request.getContentType().equals("audio/wav") || request.getContentType().equals("audio/wave")) {
                         try {
                             if (target.equals("/transmit/"))
                             {
-                                AX25Packet packet = new AX25Packet(requestPost);
-                                APIWebServer.instance.kClient.send(packet);
-                                response.put("transmitted", packet.toJSONObject());
+                                int devId = Integer.valueOf(request.getParameter("devId")).intValue();
+                                MixerStream mixerStream = JavaKISSMain.soundSystem.getMixer(devId);
+                                if (mixerStream != null)
+                                {
+                                    long cll = request.getContentLengthLong();
+                                    //System.err.println("Content Length Long: " + String.valueOf(cll));
+                                    InputStream rInputStream = request.getInputStream();
+                                    byte[] payload = rInputStream.readAllBytes();
+                                    //System.err.println("RAB: " + String.valueOf(payload.length));
+                                    rInputStream.close();
+                                    mixerStream.play(payload);
+                                    response.put("transmitted", true);
+                                    response.put("bytes", payload.length);
+                                }
                             }
                         } catch (Exception x) {
                             x.printStackTrace(System.err);
                         }
-                    } else {
-                        response.put("error", "Invalid apiPassword or termAuth!");
                     }
                     httpServletResponse.getWriter().println(response.toString());
         }
@@ -571,6 +597,8 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 } else if (target.equals("/audio/")) {
                     response.put("devices", JavaKISSMain.soundSystem.getAvailableDevices());
                     response.put("state", JavaKISSMain.soundSystem.getAvailableStates());
+                } else if (target.equals("/serial/")) {
+                    response.put("devices", JavaKISSMain.serialSystem.getSerialPorts());
                 } else if (target.equals("/stream/")) {
                     int devId = Integer.valueOf(request.getParameter("devId")).intValue();
                     try

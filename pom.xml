@@ -14,7 +14,7 @@
     <imageName>jaxt</imageName>
     <graalvm.version>22.3.0</graalvm.version>
     <jettyVersion>9.4.40.v20210413</jettyVersion>
-    <skipNative>false</skipNative>
+    <skipNative>true</skipNative>
   </properties>
   <dependencies>
     <dependency>
@@ -26,6 +26,11 @@
       <groupId>net.sourceforge.lame</groupId>
       <artifactId>lame</artifactId>
       <version>3.98.4</version>
+    </dependency>
+    <dependency>
+   <groupId>com.fazecast</groupId>
+      <artifactId>jSerialComm</artifactId>
+      <version>[2.0.0,3.0.0]</version>
     </dependency>
     <dependency>
         <groupId>com.googlecode.soundlibs</groupId>

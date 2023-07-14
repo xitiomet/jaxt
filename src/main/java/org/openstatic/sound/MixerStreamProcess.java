@@ -1,5 +1,6 @@
 package org.openstatic.sound;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,8 +18,10 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
@@ -28,6 +31,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openstatic.kiss.APIWebServer;
 import org.openstatic.kiss.JavaKISSMain;
+import org.tritonus.share.sampled.file.AudioOutputStream;
 
 import net.sourceforge.lame.lowlevel.LameEncoder;
 import net.sourceforge.lame.mp3.Lame;
@@ -38,6 +42,7 @@ import javax.sound.sampled.AudioInputStream;
 public class MixerStreamProcess implements Runnable, MixerStream
 {
     private ProcessBuilder processBuilder;
+    private ProcessBuilder playExecuteProcessBuilder;
     private Process process;
     private ArrayList<OutputStream> outputMp3;
     private ArrayList<OutputStream> outputRaw;
@@ -55,6 +60,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private InputStream processInputStream;
     private AudioFormat format;
     private String execString;
+    private String playExecString;
 
     public MixerStreamProcess(JSONObject mixerSettings)
     {
@@ -77,21 +83,43 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     public void rebuildExec()
     {
-        JSONArray command = mixerSettings.optJSONArray("execute");
-        final ArrayList<String> commandArray = new ArrayList<String>();
-        for(int i = 0; i < command.length(); i++)
+        if (this.mixerSettings.has("execute"))
         {
-            String cs = command.getString(i);
-            Set<String> keySet = mixerSettings.keySet();
-            for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+            JSONArray command = mixerSettings.optJSONArray("execute");
+            final ArrayList<String> commandArray = new ArrayList<String>();
+            for(int i = 0; i < command.length(); i++)
             {
-                String key = keyIterator.next();
-                cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
+                String cs = command.getString(i);
+                Set<String> keySet = mixerSettings.keySet();
+                for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+                {
+                    String key = keyIterator.next();
+                    cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
+                }
+                commandArray.add(cs);
             }
-            commandArray.add(cs);
+            this.execString = commandArray.stream().collect(Collectors.joining(" "));
+            this.processBuilder = new ProcessBuilder(commandArray);
         }
-        this.execString = commandArray.stream().collect(Collectors.joining(" "));
-        this.processBuilder = new ProcessBuilder(commandArray);
+
+        if (this.mixerSettings.has("playExecute"))
+        {
+            JSONArray command = mixerSettings.optJSONArray("playExecute");
+            final ArrayList<String> commandArray = new ArrayList<String>();
+            for(int i = 0; i < command.length(); i++)
+            {
+                String cs = command.getString(i);
+                Set<String> keySet = mixerSettings.keySet();
+                for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+                {
+                    String key = keyIterator.next();
+                    cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
+                }
+                commandArray.add(cs);
+            }
+            this.playExecString = commandArray.stream().collect(Collectors.joining(" "));
+            this.playExecuteProcessBuilder = new ProcessBuilder(commandArray);
+        }
     }
 
     @Override
@@ -406,6 +434,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
         if (JavaKISSMain.apiWebServer != null)
             JavaKISSMain.apiWebServer.broadcastJSONObject(stopPacket);
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.execString + ")");
+        this.setPTT(false);
     }
 
     @Override
@@ -441,5 +470,62 @@ public class MixerStreamProcess implements Runnable, MixerStream
             }
         });
         t.start();
+    }
+
+    @Override
+    public void setPTT(boolean v)
+    {
+        if (this.mixerSettings.has("ptt"))
+        {
+            JSONObject pttObject = this.mixerSettings.optJSONObject("ptt");
+            if (pttObject.has("type"))
+            {
+                String pttType = pttObject.optString("type", "");
+                if (pttType.equals("rts") && pttObject.has("serialPort"))
+                {
+                    String serialPort = pttObject.optString("serialPort");
+                    JavaKISSMain.serialSystem.setRTS(serialPort, v);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void play(byte[] clipData) 
+    {
+        if (this.canPlayTo())
+        {
+            Thread t = new Thread(() -> {
+                try
+                {
+                    ByteArrayInputStream bais = new ByteArrayInputStream(clipData);
+                    // determine the format
+                    AudioFormat aff = AudioSystem.getAudioFileFormat(bais).getFormat();
+                    // reset the stream
+                    bais.reset();
+                    // create AIS in the orginal format
+                    AudioInputStream fAIS = new AudioInputStream(bais, aff, AudioSystem.NOT_SPECIFIED);
+                    // create AIS in the target format
+                    AudioInputStream ais = AudioSystem.getAudioInputStream(this.format, fAIS);
+                    this.setPTT(true);
+                    if (this.playExecuteProcessBuilder != null)
+                    {
+                        JavaKISSMain.mainLog("[PLAYBACK EXECUTE] " + this.getMixerName() + " " + this.playExecString);
+                        Process playExecProc = this.playExecuteProcessBuilder.start();
+                        OutputStream pepOutputStream = playExecProc.getOutputStream();
+                        ais.transferTo(pepOutputStream);
+                        pepOutputStream.flush();
+                        pepOutputStream.close();
+                    } else {
+                        ais.transferTo(this.processOutputStream);
+                    }
+                    ais.close();
+                } catch (Exception e) {
+
+                }
+                this.setPTT(false);
+            });
+            t.start();
+        }
     }
 }
