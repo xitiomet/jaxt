@@ -510,18 +510,20 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     this.setPTT(true);
                     if (this.playExecuteProcessBuilder != null)
                     {
-                        JavaKISSMain.mainLog("[PLAYBACK EXECUTE] " + this.getMixerName() + " " + this.playExecString);
+                        JavaKISSMain.mainLog("[PLAYBACK EXECUTE] " + this.getMixerName() + " (" + this.playExecString + ")");
                         Process playExecProc = this.playExecuteProcessBuilder.start();
                         OutputStream pepOutputStream = playExecProc.getOutputStream();
                         ais.transferTo(pepOutputStream);
                         pepOutputStream.flush();
                         pepOutputStream.close();
+                        playExecProc.waitFor();
+                        JavaKISSMain.mainLog("[PLAYBACK EXECUTE TERMINATED] " + this.getMixerName() + " (" + this.playExecString + ")");
                     } else {
                         ais.transferTo(this.processOutputStream);
                     }
                     ais.close();
                 } catch (Exception e) {
-
+                    e.printStackTrace(System.err);
                 }
                 this.setPTT(false);
             });

@@ -44,6 +44,7 @@ public class SerialSystem
                 JavaKISSMain.mainLog("[PTT RTS PRESSED] " + serialPort);
             } else {
                 port.clearRTS();
+                port.closePort();
                 JavaKISSMain.mainLog("[PTT RTS RELEASED] " + serialPort);
             }
         } else {
