@@ -127,6 +127,18 @@ var commands = {
         },
         description: 'Start an audio device (use lsaudio for dev#)',
     },
+    setaudio: {
+        f: (args) => {
+          var event = {"action":"setaudio", "devId": parseInt(args[0])};
+          if (args.length >= 3)
+          {
+            event['key'] = args[1];
+            event['value'] = args.slice(2).join(' ');
+          }
+          sendEvent(event);
+        },
+        description: 'Change or retrieve settings for an audio device (use lsaudio for dev#)',
+    },
     source: {
       f: (args) => {
         if (args.length > 0)
@@ -437,6 +449,15 @@ function setupWebsocket()
                         }
                         term.writeln("");
                         a++;
+                    }
+                    prompt(term);
+                } else if (action == 'setaudio') {
+                    var a = 0;
+                    term.writeln("-- " + jsonObject.devId + ": " + jsonObject.name + " --");
+                    for(let key in jsonObject.mixerSettings)
+                    {
+                        let value = jsonObject.mixerSettings[key];
+                        term.writeln(key + ": " + value);
                     }
                     prompt(term);
                 } else if (action == 'authFail') {

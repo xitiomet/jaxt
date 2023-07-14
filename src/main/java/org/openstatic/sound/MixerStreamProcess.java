@@ -12,6 +12,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.sound.sampled.AudioFormat;
@@ -69,11 +72,23 @@ public class MixerStreamProcess implements Runnable, MixerStream
             mixerSettings.optBoolean("signed", true),   // Is Signed?
             mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
         );
+        rebuildExec();
+    }
+
+    public void rebuildExec()
+    {
         JSONArray command = mixerSettings.optJSONArray("execute");
         final ArrayList<String> commandArray = new ArrayList<String>();
         for(int i = 0; i < command.length(); i++)
         {
-            commandArray.add(command.getString(i));
+            String cs = command.getString(i);
+            Set<String> keySet = mixerSettings.keySet();
+            for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+            {
+                String key = keyIterator.next();
+                cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
+            }
+            commandArray.add(cs);
         }
         this.execString = commandArray.stream().collect(Collectors.joining(" "));
         this.processBuilder = new ProcessBuilder(commandArray);
@@ -400,5 +415,21 @@ public class MixerStreamProcess implements Runnable, MixerStream
     public boolean canPlayTo()
     {
         return this.mixerSettings.optBoolean("canPlayTo", false);
+    }
+    
+
+    @Override
+    public void restart() {
+        Thread t = new Thread(() -> {
+            try
+            {
+                MixerStreamProcess.this.stop();
+                Thread.sleep(2000);
+                MixerStreamProcess.this.start();
+            } catch (Exception e) {
+                
+            }
+        });
+        t.start();
     }
 }

@@ -382,4 +382,19 @@ public class MixerStreamHardware implements Runnable, MixerStream
         }
         return slc > 0;
     }
+
+    @Override
+    public void restart() {
+        Thread t = new Thread(() -> {
+            try
+            {
+                MixerStreamHardware.this.stop();
+                Thread.sleep(2000);
+                MixerStreamHardware.this.start();
+            } catch (Exception e) {
+                
+            }
+        });
+        t.start();
+    }
 }

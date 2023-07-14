@@ -17,5 +17,6 @@ public interface MixerStream
     public int outputStreamCount();
     public String getMixerName();
     public void start();
+    public void restart();
     public void stop();
 }

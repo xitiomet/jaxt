@@ -191,6 +191,11 @@ public class SoundSystem
         }
     }
 
+    public MixerStream getMixer(int devId)
+    {
+        return this.availableMixerStreams.get(devId);
+    }
+
     public void openRecordingDeviceAndWriteTo(int devId, HttpServletRequest request, HttpServletResponse httpServletResponse) throws IOException
     {
         httpServletResponse.setContentType("audio/mpeg");

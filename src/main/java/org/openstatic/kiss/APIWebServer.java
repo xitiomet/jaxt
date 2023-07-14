@@ -10,6 +10,8 @@ import org.openstatic.aprs.parser.ObjectPacket;
 import org.openstatic.aprs.parser.Parser;
 import org.openstatic.aprs.parser.Position;
 import org.openstatic.aprs.parser.PositionPacket;
+import org.openstatic.sound.MixerStream;
+import org.openstatic.sound.MixerStreamProcess;
 import org.openstatic.sound.SoundSystem;
 
 import java.io.IOException;
@@ -234,6 +236,32 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     int devId = j.optInt("devId", -1);
                     if (devId >= 0)
                         JavaKISSMain.soundSystem.startMixer(devId);
+                } else if (action.equals("setaudio")) {
+                    int devId = j.optInt("devId", -1);
+                    if (devId >= 0)
+                    {
+                        MixerStream mixerStream  = JavaKISSMain.soundSystem.getMixer(devId);
+                        if (j.has("key") && j.has("value"))
+                        {
+                            mixerStream.getMixerSettings().put(j.optString("key"), j.optString("value"));
+                            if (mixerStream instanceof MixerStreamProcess)
+                            {
+                                MixerStreamProcess msp = (MixerStreamProcess) mixerStream;
+                                msp.rebuildExec();
+                            }
+                            if (mixerStream.isAlive())
+                            {
+                                mixerStream.restart();
+                            }
+                        }
+                        JSONObject setAudioPacket = new JSONObject();
+                        setAudioPacket.put("action", "setaudio");
+                        setAudioPacket.put("devId", devId);
+                        setAudioPacket.put("name", mixerStream.getMixerName());
+                        setAudioPacket.put("mixerSettings", mixerStream.getMixerSettings());
+                        setAudioPacket.put("timestamp", System.currentTimeMillis());
+                        session.getRemote().sendStringByFuture(setAudioPacket.toString());
+                    }
                 } else if (action.equals("info")) {
                     broadcastINFO(j.optString("text", ""));
                 }
