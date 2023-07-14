@@ -243,7 +243,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                         MixerStream mixerStream  = JavaKISSMain.soundSystem.getMixer(devId);
                         if (j.has("key") && j.has("value"))
                         {
-                            mixerStream.getMixerSettings().put(j.optString("key"), j.optString("value"));
+                            mixerStream.getMixerSettings().put(j.optString("key"), j.opt("value"));
                             if (mixerStream instanceof MixerStreamProcess)
                             {
                                 MixerStreamProcess msp = (MixerStreamProcess) mixerStream;

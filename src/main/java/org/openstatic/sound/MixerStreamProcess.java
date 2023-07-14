@@ -321,6 +321,11 @@ public class MixerStreamProcess implements Runnable, MixerStream
     public void run() 
     {
         JavaKISSMain.mainLog("[AUDIO MIXER ACTIVATED] " + this.getMixerName() + " (" + this.execString + ")");
+        JSONObject startPacket = new JSONObject();
+        startPacket.put("action","startaudio");
+        startPacket.put("devId", JavaKISSMain.soundSystem.availableMixerStreams.indexOf(this));
+        if (JavaKISSMain.apiWebServer != null)
+            JavaKISSMain.apiWebServer.broadcastJSONObject(startPacket);
         AudioInputStream audioInputStream = new AudioInputStream(this.processInputStream, this.format, -1);
         try
         {
@@ -395,6 +400,11 @@ public class MixerStreamProcess implements Runnable, MixerStream
         {
             this.listeners.forEach((l) -> l.onShutdown(this));
         } catch (Exception xe) {}
+        JSONObject stopPacket = new JSONObject();
+        stopPacket.put("action","stopaudio");
+        stopPacket.put("devId", JavaKISSMain.soundSystem.availableMixerStreams.indexOf(this));
+        if (JavaKISSMain.apiWebServer != null)
+            JavaKISSMain.apiWebServer.broadcastJSONObject(stopPacket);
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.execString + ")");
     }
 

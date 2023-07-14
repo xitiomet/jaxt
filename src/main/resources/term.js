@@ -133,7 +133,14 @@ var commands = {
           if (args.length >= 3)
           {
             event['key'] = args[1];
-            event['value'] = args.slice(2).join(' ');
+            var v = args.slice(2).join(' ');
+            if (v == 'true')
+                v = true;
+            else if (v == 'false')
+                v = false;
+            else if (v.includes(','))
+                v = v.split(',');
+            event['value'] = v;
           }
           sendEvent(event);
         },

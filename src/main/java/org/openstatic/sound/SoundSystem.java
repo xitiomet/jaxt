@@ -19,11 +19,11 @@ import org.openstatic.kiss.JavaKISSMain;
 
 public class SoundSystem 
 {
-    ArrayList<MixerStream> availableMixerStreams;
-    ArrayList<MixerStream> allMixerStreams;
-    HashMap<Mixer.Info, MixerStreamHardware> mixerHardwareStreams;
-    HashMap<String, MixerStreamProcess> mixerProcessStreams;
-    JSONObject audioSettings;
+    public ArrayList<MixerStream> availableMixerStreams;
+    private ArrayList<MixerStream> allMixerStreams;
+    private HashMap<Mixer.Info, MixerStreamHardware> mixerHardwareStreams;
+    private HashMap<String, MixerStreamProcess> mixerProcessStreams;
+    private JSONObject audioSettings;
 
     public SoundSystem()
     {

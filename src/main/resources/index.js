@@ -7,6 +7,7 @@ var port = location.port;
 var wsProtocol = 'ws';
 var httpUrl = '';
 var termAuth = '';
+var playingDevice = -1;
 
 function getParameterByName(name, url = window.location.href) 
 {
@@ -106,11 +107,12 @@ function listenClick(devId)
         console.log("Opening Stream: " + streamUrl);
         audioElement.src = streamUrl;
         audioElement.play();
-       
+        playingDevice = devId;
     } else {
         console.log("Closing Stream: " + audioElement.src);
         audioElement.src = "";
         document.getElementById('speakerButton').style.backgroundColor = 'black';
+        playingDevice = -1;
     }
 }
 
@@ -241,6 +243,19 @@ function setupWebsocket()
                     logInfo(jsonObject);
                 } else if (action == 'APRS') {
                     logAPRS(jsonObject);
+                } else if (action == 'startaudio') {
+                    if (playingDevice == jsonObject.devId)
+                    {
+                        var audioElement = document.getElementById('audioElement');
+                        audioElement.load();
+                        audioElement.play(); 
+                    }
+                } else if (action == 'stopaudio') {
+                    if (playingDevice == jsonObject.devId)
+                    {
+                        var audioElement = document.getElementById('audioElement');
+                        audioElement.pause();
+                    }
                 }
             } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("control")) {
                 logPacket(jsonObject);
@@ -380,6 +395,8 @@ window.onload = function() {
     };
     audioElement.onerror = function() {
         document.getElementById('speakerButton').style.backgroundColor = 'black';
+        if (audioElement.src != '')
+            audioElement.play();
     };
     audioElement.onended = function() {
         document.getElementById('speakerButton').style.backgroundColor = 'black';
