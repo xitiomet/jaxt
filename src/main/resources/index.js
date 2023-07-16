@@ -63,15 +63,37 @@ function switchTo(mainScreenId)
     }
 }
 
+function switchLED(color)
+{
+    if (color == 'red')
+    {
+        document.getElementById('redLed').style.display = 'inline-block';
+    } else {
+        document.getElementById('redLed').style.display = 'none';
+    }
+    if (color == 'green')
+    {
+        document.getElementById('greenLed').style.display = 'inline-block';
+    } else {
+        document.getElementById('greenLed').style.display = 'none';
+    }
+    if (color == 'grey')
+    {
+        document.getElementById('greyLed').style.display = 'inline-block';
+    } else {
+        document.getElementById('greyLed').style.display = 'none';
+    }
+}
+
 function updateKCS(v)
 {
     if (v)
     {
-        document.getElementById('connectionLed').src="led-green.svg";
-        logIt("KISS Server Connected");
+        switchLED('green');
+        //logIt("KISS Server Connected");
     } else {
-        document.getElementById('connectionLed').src="led-red.svg";
-        logIt("KISS Server Disconnected");
+        switchLED('red');
+        //logIt("KISS Server Disconnected");
     }
 }
 
@@ -687,7 +709,7 @@ function setupWebsocket()
         
         connection.onclose = function () 
         {
-            document.getElementById('connectionLed').src="led-grey.svg";
+            switchLED('grey');
             console.log('WebSocket connection closed');
             reconnectTimeout = setTimeout(setupWebsocket, 10000);
         };
