@@ -1,9 +1,15 @@
 <html>
 <head>
     <script src="jquery.min.js"></script>
+    <script src="recorder.js"></script>
+
     <script type="text/javascript">
         var txCount = 0;
         var termAuth = "";
+        var gumStream; 						//stream from getUserMedia()
+        var rec; 							//Recorder.js object
+        var input; 							//MediaStreamAudioSourceNode we'll be recording
+        var audioBlob = undefined;
 
         function getParameterByName(name, url = window.location.href) 
         {
@@ -117,11 +123,171 @@
                 },
                 error: () => {}
             });
+            $.ajax({
+                url: "jaxt/api/audio/?termAuth=" + termAuth,
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    if (data.hasOwnProperty('devices'))
+                    {
+                        if (data.devices.length > 0)
+                        {
+                            var selectDev = document.getElementById('selectDev');
+                            var i = 0;
+                            for(const playDev of data.devices)
+                            {
+                                if (data.state[playDev].canPlayTo == true)
+                                {
+                                    var devOption = document.createElement("option");
+                                    devOption.value = i;
+                                    devOption.innerText = playDev;
+                                    selectDev.appendChild(devOption);
+                                }
+                                i++;
+                            }
+                        } else {
+                            document.getElementById('audioModeButton').display = 'none';
+                        }
+                    }
+                },
+                error: () => {}
+            });
+            
+        }
+
+
+        // shim for AudioContext when it's not avb. 
+        var AudioContext = window.AudioContext || window.webkitAudioContext;
+
+
+        function startRecord()
+        {
+            var recordButton = document.getElementById('recordButton');
+            var stopButton = document.getElementById('stopButton');
+            recordButton.disabled = true;
+            stopButton.disabled = true;
+            var constraints = { audio: true, video:false }
+            navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+                console.log("getUserMedia() success, stream created, initializing Recorder.js ...");
+
+                /*
+                    create an audio context after getUserMedia is called
+                    sampleRate might change after getUserMedia is called, like it does on macOS when recording through AirPods
+                    the sampleRate defaults to the one set in your OS for your playback device
+
+                */
+                audioContext = new AudioContext();
+
+                //update the format 
+                //document.getElementById("formats").innerHTML="Format: 1 channel pcm @ "+audioContext.sampleRate/1000+"kHz"
+
+                /*  assign to gumStream for later use  */
+                gumStream = stream;
+                
+                /* use the stream */
+                input = audioContext.createMediaStreamSource(stream);
+
+                /* 
+                    Create the Recorder object and configure to record mono sound (1 channel)
+                    Recording 2 channels  will double the file size
+                */
+                rec = new Recorder(input,{numChannels:1})
+
+                //start the recording process
+                rec.record()
+
+                console.log("Recording started");
+                stopButton.disabled = false;
+            }).catch(function(err) {
+                recordButton.disabled = false;
+                stopButton.disabled = true;
+            });
+        }
+
+        function stopRecord()
+        {
+            var recordButton = document.getElementById('recordButton');
+            var stopButton = document.getElementById('stopButton');
+            rec.stop();
+            gumStream.getAudioTracks()[0].stop();
+            rec.exportWAV(createTransmitLink);
+            stopButton.disabled = true;
+            recordButton.disabled = false;
+        }
+
+        function createTransmitLink(blob)
+        {
+            audioBlob = blob
+            var url = URL.createObjectURL(blob);
+	        var au = document.createElement('audio');
+            au.controls = true;
+	        au.src = url;
+            document.getElementById('recordings').appendChild(au);
+        }
+
+        function transmitAudio()
+        {
+            $.ajax({
+                url: "jaxt/api/transmit/?termAuth=" + termAuth + "&devId=" + document.getElementById('selectDev').value,
+                type: 'POST',
+                data: audioBlob,
+                processData: false,
+                contentType: 'audio/wav'
+            });
+        }
+
+        function dataMode()
+        {
+            document.getElementById('audioOption').style.display = 'none';
+            document.getElementById('dataOption').style.display = 'inline-block';
+        }
+        function audioMode()
+        {
+            document.getElementById('audioOption').style.display = 'inline-block';
+            document.getElementById('dataOption').style.display = 'none';
         }
     </script>
 </head>
 
-<body onload="getSettings()">
+<body onload="getSettings()" style="background-color: #444444; color: #ffffff; text-align: center;">
+<div style="width: 100%; text-align: center;"><button title="Data Mode" style="width: 56px; height: 56px; background-image: url('jaxt-1.0.png'); background-position: center; background-repeat: no-repeat; background-size: contain;" onclick="dataMode()"></button> <button id="audioModeButton" title="Audio Mode" style="width: 56px; height: 56px; background-image: url('speaker-32.png'); background-position: center; background-repeat: no-repeat; background-size: auto;" onclick="audioMode()"></button></div>
+<div id="audioOption" style="display: none;">
+<h2>Transmit Audio</h2>
+    <table>
+        <tr>
+            <td style="text-align: center;">
+                <button id="recordButton" onclick="startRecord()" style="width: 96px; height: 96px; background-color: red; color: white;">Record</button>
+                <button id="stopButton" onclick="stopRecord()" style="width: 96px; height: 96px;" disabled>Stop</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div id="recordings">
+
+                </div><br />
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center;"><b>Select Transmit Device</b></td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">
+                <select id="selectDev">
+
+                </select><br />
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center;"><br />
+                <button id="transmitAudioButton" onclick="transmitAudio()">
+                    Transmit Recording
+                </button>
+            </td>
+        </tr>
+    </table>
+    
+</div>
+<div id="dataOption" style="display: inline-block;">
     <h2>Transmit UI Frame</h2>
     <table>
         <tr>
@@ -167,5 +333,6 @@
             </td>
         </tr>
     </table>
+</div>
 </body>
 </html>

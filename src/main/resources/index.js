@@ -83,7 +83,7 @@ function popupWindow(url, windowName, w, h) {
 
 function doTxWindow()
 {
-    var myWindow = popupWindow('tx.html?termAuth=' + encodeURIComponent(termAuth), "Transmit", 455, 335);
+    var myWindow = popupWindow('tx.html?termAuth=' + encodeURIComponent(termAuth), "Transmit", 455, 426);
 }
 
 function fitStuff()

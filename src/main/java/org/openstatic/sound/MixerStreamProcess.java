@@ -478,13 +478,16 @@ public class MixerStreamProcess implements Runnable, MixerStream
         if (this.mixerSettings.has("ptt"))
         {
             JSONObject pttObject = this.mixerSettings.optJSONObject("ptt");
-            if (pttObject.has("type"))
+            if (pttObject != null)
             {
-                String pttType = pttObject.optString("type", "");
-                if (pttType.equals("rts") && pttObject.has("serialPort"))
+                if (pttObject.has("type"))
                 {
-                    String serialPort = pttObject.optString("serialPort");
-                    JavaKISSMain.serialSystem.setRTS(serialPort, v);
+                    String pttType = pttObject.optString("type", "");
+                    if (pttType.equals("rts") && pttObject.has("serialPort"))
+                    {
+                        String serialPort = pttObject.optString("serialPort");
+                        JavaKISSMain.serialSystem.setRTS(serialPort, v);
+                    }
                 }
             }
         }

@@ -53,6 +53,9 @@
       "pattern":"\\Qjaxt/index.js\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/jaxt-1.0.png\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/jquery.min.js\\E"
     }, 
     {
@@ -78,6 +81,9 @@
     }, 
     {
       "pattern":"\\Qjaxt/node_modules/xterm/lib/xterm.js\\E"
+    }, 
+    {
+      "pattern":"\\Qjaxt/recorder.js\\E"
     }, 
     {
       "pattern":"\\Qjaxt/speaker-32.png\\E"
