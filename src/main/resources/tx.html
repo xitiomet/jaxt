@@ -2,7 +2,9 @@
 <head>
     <script src="jquery.min.js"></script>
     <script src="recorder.js"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="apple-touch-fullscreen" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <script type="text/javascript">
         var txCount = 0;
         var termAuth = "";
@@ -217,12 +219,14 @@
 
         function createTransmitLink(blob)
         {
+            var recordingsDiv = document.getElementById('recordings');
             audioBlob = blob
             var url = URL.createObjectURL(blob);
 	        var au = document.createElement('audio');
             au.controls = true;
 	        au.src = url;
-            document.getElementById('recordings').appendChild(au);
+            recordingsDiv.innerHTML = '';
+            recordingsDiv.appendChild(au);
         }
 
         function transmitAudio()

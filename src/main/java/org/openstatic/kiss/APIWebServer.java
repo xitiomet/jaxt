@@ -491,7 +491,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                     String target = request.getPathInfo();
                     //System.err.println("Path: " + target);
                     JSONObject response = new JSONObject();
-                    if (request.getContentType().equals("text/javascript") || request.getContentType().equals("text/json"))
+                    if (request.getContentType().contains("text/javascript") || request.getContentType().contains("application/json"))
                     {
                         JSONObject requestPost = readJSONObjectPOST(request);
                         if (JavaKISSMain.settings.optString("apiPassword","").equals(requestPost.optString("apiPassword","")) || APIWebServer.instance.validateTermAuth(requestPost.optString("termAuth",null)))

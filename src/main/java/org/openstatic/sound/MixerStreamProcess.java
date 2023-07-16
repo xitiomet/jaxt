@@ -501,6 +501,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
             Thread t = new Thread(() -> {
                 try
                 {
+                    JavaKISSMain.mainLog("[PLAYBACK STARTED] " + this.getMixerName());
                     ByteArrayInputStream bais = new ByteArrayInputStream(clipData);
                     // determine the format
                     AudioFormat aff = AudioSystem.getAudioFileFormat(bais).getFormat();
@@ -525,6 +526,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
                         ais.transferTo(this.processOutputStream);
                     }
                     ais.close();
+                    JavaKISSMain.mainLog("[PLAYBACK ENDED] " + this.getMixerName());
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                 }

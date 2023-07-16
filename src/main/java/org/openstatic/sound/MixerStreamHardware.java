@@ -443,6 +443,8 @@ public class MixerStreamHardware implements Runnable, MixerStream
             Thread t = new Thread(() -> {
                 try
                 {
+                    JavaKISSMain.mainLog("[PLAYBACK STARTED] " + this.getMixerName());
+
                     ByteArrayInputStream bais = new ByteArrayInputStream(clipData);
                     // determine the format
                     AudioFormat aff = AudioSystem.getAudioFileFormat(bais).getFormat();
@@ -467,6 +469,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     }
                     clip.flush();
                     clip.close();
+                    JavaKISSMain.mainLog("[PLAYBACK ENDED] " + this.getMixerName());
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                 }
