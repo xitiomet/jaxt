@@ -1,4 +1,7 @@
 var connection;
+var term;
+var fitAddon = new FitAddon.FitAddon();
+var command = '';
 var debugMode = false;
 var reconnectTimeout;
 var hostname = location.hostname;
@@ -9,6 +12,10 @@ var httpUrl = '';
 var termAuth = '';
 var playingDevice = -1;
 var playingStream = null;
+var sourceCallsign = "";
+var jaxtHostname = "";
+var runningApp = undefined;
+var playingAudio = null;
 
 function getParameterByName(name, url = window.location.href) 
 {
@@ -30,6 +37,32 @@ function padString(str, len) {
   }
 }
 
+function switchTo(mainScreenId)
+{
+    var mainScreens = document.getElementsByClassName('mainScreen');
+    for(const scrn of mainScreens)
+    {
+        scrn.style.display = 'none';
+    }
+    var mainScreen = document.getElementById(mainScreenId);
+    document.body.style.backgroundColor = mainScreen.style.backgroundColor;
+    mainScreen.style.display = 'block';
+    if (mainScreenId == 'terminalScreen')
+    {
+        document.getElementById('topBar').style.backgroundColor = '#222222';
+        document.getElementById('consoleButton').style.display = 'inline-block';
+        document.getElementById('terminalButton').style.display = 'none';
+        setTimeout(() => {
+            console.log("Fit Stuff!");
+            fitStuff();
+        },1000);
+    } else {
+        document.getElementById('topBar').style.backgroundColor = '#000000';
+        document.getElementById('consoleButton').style.display = 'none';
+        document.getElementById('terminalButton').style.display = 'inline-block';
+    }
+}
+
 function updateKCS(v)
 {
     if (v)
@@ -48,14 +81,331 @@ function popupWindow(url, windowName, w, h) {
     return window.open(url, windowName, `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=${w}, height=${h}, top=${y}, left=${x}`);
 }
 
-function doConsoleWindow()
-{
-    var myWindow = popupWindow('term.html?termAuth=' + encodeURIComponent(termAuth), "Console", 720, 480);
-}
-
 function doTxWindow()
 {
     var myWindow = popupWindow('tx.html?termAuth=' + encodeURIComponent(termAuth), "Transmit", 455, 335);
+}
+
+function fitStuff()
+{
+    var terminalElement = document.getElementById('terminal');
+    if (terminalElement != undefined)
+    {
+        terminalElement.style.height = (window.innerHeight - 60) + 'px';
+        terminalElement.style.width = window.innerWidth - 10 + 'px';
+        fitAddon.fit();
+    }
+}
+
+
+window.onresize = function() {
+    fitStuff();
+}
+
+function prompt(term)
+{
+    command = '';
+    if (sourceCallsign == "")
+       term.write('\r\n\x1B[0;91m@' + jaxtHostname + '\x1B[0m$ ');
+    else
+       term.write('\r\n\x1B[0;93m' + sourceCallsign + '\x1B[0;91m@' + jaxtHostname + '\x1B[0m$ ');
+}
+
+function promptLength()
+{
+    return sourceCallsign.length + jaxtHostname.length + 3;
+}
+
+var commands = {
+    help: {
+      f: (args) => {
+        term.writeln([
+          'JAXT Shell help',
+          ...Object.keys(commands).map(e => `  ${e.padEnd(10)} ${ commands[e].description.split('\r\n').join('\r\n             ') }`)
+        ].join('\n\r\r\n'));
+        prompt(term);
+      },
+      description: 'Prints this help message',
+    },
+    ui: {
+      f: (args) => {
+        if (sourceCallsign == "")
+        {
+            term.writeln("ERROR: you must set your callsign first by using the \"source\" command");
+        } else {
+            if (args.length >= 2)
+            {
+                var destinationCallsign = args[0].toUpperCase();
+                var payload = args.splice(1).join(' ');
+                var packet = {
+                    "source": sourceCallsign,
+                    "destination": destinationCallsign,
+                    "control": ["UI","C"],
+                    "payload": payload
+                };
+                sendEvent(packet);
+                term.writeln("Sending UI frame to TNC:");
+                term.writeln(sourceCallsign + " > " + destinationCallsign + ": " + payload);
+            } else {
+                term.writeln("ERROR: not enough parameters");
+            }
+        }
+        prompt(term);
+      },
+      description: 'Send a UI frame to TNC. First parameter is the target callsign\r\n' +
+                   'and the rest is the payload.\r\n\r\n' +
+                   'Example:\r\n$ ui TARGET-1 This is some cool stuff!'
+    },
+    lsaudio: {
+        f: (args) => {
+          sendEvent({"action":"lsaudio"});
+        },
+        description: 'List Audio devcies',
+    },
+    stopaudio: {
+        f: (args) => {
+          sendEvent({"action":"stopaudio", "devId": parseInt(args[0])});
+          prompt(term);
+        },
+        description: 'Stop an audio device (use lsaudio for dev#)',
+    },
+    startaudio: {
+        f: (args) => {
+          sendEvent({"action":"startaudio", "devId": parseInt(args[0])});
+          prompt(term);
+        },
+        description: 'Start an audio device (use lsaudio for dev#)',
+    },
+    setaudio: {
+        f: (args) => {
+          var event = {"action":"setaudio", "devId": parseInt(args[0])};
+          if (args.length >= 3)
+          {
+            var key = args[1];
+            event['key'] = key;
+            var v = args.slice(2).join(' ');
+            if (v == 'true')
+            {
+                v = true;
+            } else if (v == 'false') {
+                v = false;
+            } else if (v.includes(',')) {
+                v = v.split(',');
+                if (key == 'ptt')
+                {
+                    var pttType = v[0];
+                    var second = v[1];
+                    if (pttType == "rts")
+                        v = {"type": pttType, "serialPort": second};
+                    else
+                        v = {"type": "none"};
+                }
+            }
+            event['value'] = v;
+          }
+          sendEvent(event);
+        },
+        description: 'Change or retrieve settings for an audio device\r\n(use lsaudio for dev#)',
+    },
+    source: {
+      f: (args) => {
+        if (args.length > 0)
+        {
+            sourceCallsign = args[0].toUpperCase();
+            term.writeln("your callsign is now \"" + sourceCallsign + "\"");
+        } else {
+            if (sourceCallsign == "")
+                term.writeln("ERROR: not enough parameters");
+            else
+                term.writeln("your callsign is \"" + sourceCallsign + "\"");
+        }
+        prompt(term);
+      },
+      description: 'Set your callsign. Example: $ source mycall-5'
+    },
+    connect: {
+        f: (args) => {
+            if (sourceCallsign == "")
+            {
+                term.writeln("ERROR: you must set your callsign first by using the \"source\" command");
+            } else {
+                runningApp = connectApp;
+                runningApp.start(args);
+            }
+        },
+        description: 'Connect to a remote radio terminal. Example: $ connect term-5'
+    },
+    listen: {
+        f: (args) => {
+            term.writeln("Listening to device #" + args[0] + " use \"mute\" to stop!");
+            listenClick(args[0]);
+            prompt(term);
+        },
+        description: 'Listen to an audio device on the system running jaxt\r\nExample: "listen 2" (use lsaudio to get device number)'
+    },
+    mute: {
+        f: (args) => {
+            term.writeln("Stopping Audio!");
+            listenClick(-1);
+            var audioClipElement = document.getElementById('audioClipElement');
+            audioClipElement.src = '';
+            prompt(term);
+        },
+        description: 'Stop any audio playing'
+    },
+    clear: {
+        f: (args) => {
+            setTimeout(() => {
+                term.clear();
+                prompt(term);
+            },1000)
+        },
+        description: 'Clear Terminal Screen'
+    },
+  };
+
+const remoteApp = {
+    start: (args) => {
+
+    },
+    stop: () => {
+        sendEvent({"action": "kill"});
+    },
+    handlePacket: (packet) => {
+
+    },
+    handleCommand: (command) => {
+        sendEvent({"action": "input", "text": command});
+        term.writeln('');
+    }
+};
+
+function runCommand(term, text)
+{
+    if (runningApp == undefined || runningApp == null)
+    {
+        const tsplit = text.trim().split(' ');
+        const command = tsplit[0];
+        const args = tsplit.splice(1);
+        if (command.length > 0) 
+        {
+            term.writeln('');
+            if (command in commands) 
+            {
+                var commandEntry = commands[command];
+                if (commandEntry.hasOwnProperty('remote'))
+                {
+                    if (commandEntry.remote)
+                    {
+                        sendEvent({"action": "command", "command": command, "args": args});
+                        runningApp = remoteApp;
+                        return;
+                    }
+                }
+                commandEntry.f(args);
+                return;
+            }
+            term.writeln(`${command}: command not found`);
+        }
+        prompt(term);
+    } else {
+        runningApp.handleCommand(text);
+    }
+}
+
+function handlePacket(packet)
+{
+    if (packet.destination == sourceCallsign)
+    {
+        if ((runningApp != null && runningApp != undefined))
+        {
+            //console.log("App should handle packet!");
+            runningApp.handlePacket(packet);
+        } else {
+            if (packet.control.includes('DISC'))
+            {
+                setTimeout(() => {
+                    sendEvent({
+                        "source": sourceCallsign,
+                        "destination": packet.source,
+                        "control": ["UA","F","R"]
+                    });
+                },2000);
+            }
+        }
+    }
+}
+
+function runFakeTerminal() 
+{
+    if (term._initialized) {
+      return;
+    }
+    term.write('     ____.  _____  ____  ______________\r\n');
+    term.write('    |    | /  _  \\ \\   \\/  /\\__    ___/\r\n');
+    term.write('    |    |/  /_\\  \\ \\     /   |    |   \r\n');
+    term.write('/\\__|    /    |    \\/     \\   |    |   \r\n');
+    term.write('\\________\\____|__  /___/\\  \\  |____|   \r\n');
+    term.write('                 \\/      \\_/           \r\n');
+    term.write('\r\n');
+    term.write('Welcome to the JAXT terminal, type "help" for a list of commands.\r\n');
+    if (sourceCallsign != "")
+        term.write('Your callsign is set to \"' + sourceCallsign + '\"\r\n');
+    else
+        term.write('Your callsign is NOT set!\r\n');
+    term._initialized = true;
+    term.prompt = () => { prompt(term); };
+    prompt(term);
+
+    term.onData(e => {
+        switch (e) {
+          case '\u0003': // Ctrl+C
+            term.write('^C');
+            if (runningApp != null)
+            {
+                runningApp.stop();
+                runningApp = null;
+            }
+            prompt(term);
+            break;
+          case '\r': // Enter
+            runCommand(term, command);
+            command = '';
+            break;
+          case '\u007F': // Backspace (DEL)
+            // Do not delete the prompt
+            if (term._core.buffer.x > promptLength()) 
+            {
+              term.write('\b \b');
+              if (command.length > 0) 
+              {
+                command = command.substr(0, command.length - 1);
+              }
+            }
+            break;
+          case '\t':
+            if (!command.includes(' '))
+            {
+                for(cmd of Object.keys(commands))
+                {
+                    if (cmd.startsWith(command))
+                    {
+                        var finishCmd = cmd.substr(command.length) + ' ';
+                        term.write(finishCmd);
+                        command += finishCmd;
+                    }
+                }
+            }
+            break;
+          default: // Print all other characters for demo
+            if (e >= String.fromCharCode(0x20) && e <= String.fromCharCode(0x7E) || e >= '\u00a0') {
+              command += e;
+              term.write(e);
+            }
+        }
+      });
+  
+    runFakeTerminal();
 }
 
 function sendEvent(wsEvent)
@@ -86,7 +436,8 @@ function clearHistory()
 function doAuth()
 {
     sendEvent({
-        "apiPassword": document.getElementById('password').value
+        "apiPassword": document.getElementById('password').value,
+        "termId": Date.now()
     });
 }
 
@@ -100,7 +451,9 @@ function playAudio(uri)
 function listenClick(devId)
 {
     var sdd = document.getElementById('selectDeviceDiv');
-    document.getElementById('bodyTag').removeChild(sdd);
+    var bodyTag = document.getElementById('bodyTag');
+    if (sdd != null)
+        bodyTag.removeChild(sdd);
     var audioElement = document.getElementById('audioElement');
     if (devId >= 0)
     {
@@ -220,6 +573,10 @@ function setupWebsocket()
             {
                 var action = jsonObject.action;
                 if (action == 'authOk') {
+                    sourceCallsign = jsonObject.source;
+                    if (sourceCallsign == null)
+                        sourceCallsign = "";
+                    jaxtHostname = jsonObject.hostname;
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('console').style.display = 'block';
                     document.getElementById('clearButton').style.display = 'inline-block';
@@ -228,12 +585,13 @@ function setupWebsocket()
                     {
                         document.getElementById('txButton').style.display = 'inline-block';
                     }
-                    document.getElementById('consoleButton').style.display = 'inline-block';
+                    document.getElementById('terminalButton').style.display = 'inline-block';
                     termAuth = jsonObject.termAuth;
                     updateKCS(jsonObject.kissConnected)
                     sendEvent({
                         "history": 100
                     });
+                    runFakeTerminal();
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'recording') {
@@ -260,9 +618,70 @@ function setupWebsocket()
                         var audioElement = document.getElementById('audioElement');
                         audioElement.pause();
                     }
+                } else if (action == 'lsaudio') {
+                    var a = 0;
+                    term.writeln("-- Sound Devices --");
+                    for(devname of jsonObject.devices)
+                    {
+                        term.write(a + ": " + devname);
+                        if (jsonObject.state.hasOwnProperty(devname))
+                        {
+                            var stateObj = jsonObject.state[devname];
+                            if (stateObj.canBeRecorded == true && stateObj.canPlayTo == true)
+                            {
+                               term.write(" \x1B[0;96m(IN/OUT)\x1B[0m");
+                            } else if (stateObj.canBeRecorded == false && stateObj.canPlayTo == true) {
+                               term.write(" \x1B[0;96m(OUT)\x1B[0m");
+                            } else if (stateObj.canBeRecorded == true && stateObj.canPlayTo == false) {
+                                term.write(" \x1B[0;96m(IN)\x1B[0m");
+                            }
+                            if (stateObj.isAlive == true)
+                            {
+                               term.write(" \x1B[0;92m(Monitored)\x1B[0m");
+                            }
+                            if (stateObj['settings']['autoRecord'] == true)
+                            {
+                                term.write(" \x1B[0;91m(A-REC)\x1B[0m");
+                            }
+                        }
+                        term.writeln("");
+                        a++;
+                    }
+                    prompt(term);
+                } else if (action == 'setaudio') {
+                    var a = 0;
+                    term.writeln("-- " + jsonObject.devId + ": " + jsonObject.name + " --");
+                    for(let key in jsonObject.mixerSettings)
+                    {
+                        let value = jsonObject.mixerSettings[key];
+                        if (value instanceof Object)
+                        {
+                            term.writeln(key + ": " + JSON.stringify(value));
+                        } else {
+                            term.writeln(key + ": " + value);
+                        }
+                    }
+                    prompt(term);
+                } else if (action == 'write') {
+                    term.write(jsonObject.data);
+                } else if (action == 'commands') {
+                    Object.entries(jsonObject.commands).forEach((entry) => {
+                        const [key, value] = entry;
+                        if (value.hasOwnProperty('execute'))
+                            value.remote = true;
+                        commands[key] = value;
+                    });
+                } else if (action == 'prompt') {
+                    if (runningApp != null)
+                    {
+                        runningApp.stop();
+                        runningApp = null;
+                    }
+                    prompt(term);
                 }
             } else if (jsonObject.hasOwnProperty("source") && jsonObject.hasOwnProperty("destination") && jsonObject.hasOwnProperty("control")) {
                 logPacket(jsonObject);
+                handlePacket(jsonObject);
             }
         };
         
@@ -408,6 +827,10 @@ window.onload = function() {
     audioElement.onended = function() {
         document.getElementById('speakerButton').style.backgroundColor = 'black';
     };
+    term = new Terminal({cursorBlink: true, allowProposedApi: false});
+    term.open(document.getElementById('terminal')); 
+    term.loadAddon(fitAddon);
+    fitStuff();
     setupWebsocket();
 };
 

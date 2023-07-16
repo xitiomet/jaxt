@@ -1,9 +1,6 @@
 package org.openstatic.sound;
 
 import java.io.OutputStream;
-
-import javax.sound.sampled.Clip;
-
 import org.json.JSONObject;
 
 public interface MixerStream 

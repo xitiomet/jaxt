@@ -89,6 +89,9 @@
       "pattern":"\\Qjaxt/term.js\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/terminal-32.png\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/tx.html\\E"
     }, 
     {
