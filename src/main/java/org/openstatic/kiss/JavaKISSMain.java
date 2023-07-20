@@ -208,6 +208,10 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 {
                     settings.put("apiPort", 8101);
                 }
+                if (JavaKISSMain.settingsFile == null)
+                {
+                    JavaKISSMain.settingsFile = homeSettings;
+                }
             }
             if (JavaKISSMain.settings.has("logPath"))
             {
