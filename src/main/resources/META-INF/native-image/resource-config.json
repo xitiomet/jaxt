@@ -38,6 +38,9 @@
       "pattern":"\\Qjaxt/icon-128.png\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/icon-16.png\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/icon-256.png\\E"
     }, 
     {
@@ -83,6 +86,9 @@
       "pattern":"\\Qjaxt/node_modules/xterm/lib/xterm.js\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/quit.png\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/recorder.js\\E"
     }, 
     {
@@ -115,6 +121,14 @@
   ]},
   "bundles":[
     {
+      "name":"com.sun.swing.internal.plaf.basic.resources.basic",
+      "classNames":["com.sun.swing.internal.plaf.basic.resources.basic"]
+    }, 
+    {
+      "name":"com.sun.swing.internal.plaf.metal.resources.metal",
+      "classNames":["com.sun.swing.internal.plaf.metal.resources.metal"]
+    }, 
+    {
       "name":"javax.servlet.LocalStrings",
       "locales":[
         "", 
@@ -127,6 +141,10 @@
         "", 
         "und"
       ]
+    }, 
+    {
+      "name":"sun.awt.resources.awt",
+      "classNames":["sun.awt.resources.awt"]
     }
   ]
 }

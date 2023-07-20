@@ -363,7 +363,6 @@ public class MixerStreamHardware implements Runnable, MixerStream
         if (JavaKISSMain.apiWebServer != null)
             JavaKISSMain.apiWebServer.broadcastJSONObject(stopPacket);
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.mixer.getMixerInfo().getName() + ")");
-        this.setPTT(false);
     }
 
     @Override

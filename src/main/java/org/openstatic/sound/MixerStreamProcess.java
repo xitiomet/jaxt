@@ -434,7 +434,6 @@ public class MixerStreamProcess implements Runnable, MixerStream
         if (JavaKISSMain.apiWebServer != null)
             JavaKISSMain.apiWebServer.broadcastJSONObject(stopPacket);
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.execString + ")");
-        this.setPTT(false);
     }
 
     @Override

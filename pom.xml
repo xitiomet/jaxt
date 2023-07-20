@@ -345,6 +345,55 @@
             </configuration>
        </plugin>
        <plugin>
+          <groupId>com.akathist.maven.plugins.launch4j</groupId>
+          <artifactId>launch4j-maven-plugin</artifactId>
+          <version>2.0.1</version>
+          <executions>
+              <execution>
+                  <id>l4j-gui</id>
+                  <phase>package</phase>
+                  <goals>
+                      <goal>launch4j</goal>
+                  </goals>
+                  <configuration>
+                      <headerType>gui</headerType>
+                      <outfile>target/${imageName}.exe</outfile>
+                      <jar>target/${project.artifactId}-${project.version}.jar</jar>
+                      <!-- if <dontWrapJar>true</dontWrapJar> change to this conf <jar>${project.artifactId}-${project.version}.jar</jar> -->
+                      <dontWrapJar>false</dontWrapJar>
+                      <errTitle>Error in launch4j plugin</errTitle>
+                      <classPath>
+                          <mainClass>${mainClass}</mainClass>
+                      </classPath>
+                      <cmdLine>-g</cmdLine>
+                      <icon>${project.basedir}/src/main/resources/favicon.ico</icon>
+                      <chdir>.</chdir>
+                      <jre>
+                          <path>./jre</path>
+                          <minVersion>11</minVersion>
+                          <initialHeapSize>512</initialHeapSize>
+                          <maxHeapSize>1024</maxHeapSize>
+                          <opts>
+                              <opt>-Djava.library.path=./natives/</opt>
+                          </opts>
+                      </jre>
+                      <versionInfo>
+                          <fileVersion>${project.version}.0.0</fileVersion>
+                          <txtFileVersion>${project.version}.0.0</txtFileVersion>
+                          <fileDescription>An AX.25 Radio Tool</fileDescription>
+                          <copyright>Copyright (c) 2023</copyright>
+                          <companyName></companyName>
+                          <productVersion>1.0.0.0</productVersion>
+                          <txtProductVersion>${project.version}</txtProductVersion>
+                          <productName>${imageName}</productName>
+                          <internalName>${imageName}</internalName>
+                          <originalFilename>${imageName}.exe</originalFilename>
+                      </versionInfo>
+                  </configuration>
+              </execution>
+          </executions>
+      </plugin>
+       <plugin>
           <groupId>io.github.fvarrui</groupId>
           <artifactId>javapackager</artifactId>
           <version>1.7.0</version>
@@ -388,6 +437,36 @@
                         </categories>
                     </linuxConfig>
                   </configuration>
+              </execution>
+          </executions>
+      </plugin>
+      <plugin>
+          <groupId>org.digitalmediaserver</groupId>
+          <artifactId>nsis-maven-plugin</artifactId>
+          <version>1.0.2</version>
+          <configuration>
+              <makensisExecutable>C:\Program Files (x86)\NSIS\makensis.exe</makensisExecutable>
+              <makensisExecutableLinux>/usr/bin/makensis</makensisExecutableLinux>
+              <makensisExecutableMacOS></makensisExecutableMacOS>
+              <compression>lzma</compression>
+              <compressionIsFinal>true</compressionIsFinal>
+              <compressionDictSize>64</compressionDictSize>
+              <defines>
+                  <PROJECT_NAME_SHORT>JAXT</PROJECT_NAME_SHORT>
+                  <PROJECT_NAME_CAMEL>${project.name.camel}</PROJECT_NAME_CAMEL>
+              </defines>
+          </configuration>
+          <executions>
+              <execution>
+                  <id>build-windows-installer</id>
+                  <configuration>
+                      <scriptFile>${project.basedir}/src/nsis/jaxt.nsi</scriptFile>
+                      <outputFile>JAXTSetup-${project.version}.exe</outputFile>
+                  </configuration>
+                  <goals>
+                      <goal>generate-headerfile</goal>
+                      <goal>make</goal>
+                  </goals>
               </execution>
           </executions>
       </plugin>

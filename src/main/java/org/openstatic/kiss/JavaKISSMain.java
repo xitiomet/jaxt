@@ -43,6 +43,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
     public static APIWebServer apiWebServer;
     public static SoundSystem soundSystem;
     public static SerialSystem serialSystem;
+    public static JAXTGui gui;
 
     public JavaKISSMain(KISSClient client)
     {
@@ -108,6 +109,7 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
         options.addOption(new Option("m", "payload", true, "Payload string to send on test interval. {{ts}} for timestamp, {{seq}} for sequence."));
         options.addOption(new Option("v", "verbose", false, "Shows Packets"));
         options.addOption(new Option("x", "post", true, "HTTP POST packets received as JSON to url"));
+        options.addOption(new Option("g", "gui", false, "Start with gui support (for windows)"));
         options.addOption(new Option("?", "help", false, "Shows help"));
 
         JavaKISSMain.settings = new JSONObject();
@@ -199,6 +201,14 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             {
                 settings.put("port", Integer.valueOf(cmd.getOptionValue("p")).intValue());
             }
+            if (cmd.hasOption("g"))
+            {
+                settings.put("guiMode", true);
+                if (!settings.has("apiPort"))
+                {
+                    settings.put("apiPort", 8101);
+                }
+            }
             if (JavaKISSMain.settings.has("logPath"))
             {
                 JavaKISSMain.logsFolder = new File(JavaKISSMain.settings.optString("logPath", "." + File.separator + "jaxt-logs"));
@@ -249,7 +259,10 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
                 }
             }
             
-
+            if (settings.optBoolean("guiMode", false))
+            {
+                JavaKISSMain.gui = new JAXTGui();
+            }
             Runtime.getRuntime().addShutdownHook(new Thread() 
             { 
                 public void run() 
