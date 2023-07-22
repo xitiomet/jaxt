@@ -15,6 +15,8 @@ public interface MixerStream
     public void removeMixerStreamListener(MixerStreamListener l);
     public void play(byte[] clip);
     public int outputStreamCount();
+    public int getNumChannels();
+    public float getSampleRate();
     public String getMixerName();
     public void start();
     public void restart();

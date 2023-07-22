@@ -245,11 +245,6 @@ public class APIWebServer implements AX25PacketListener, Runnable
                         if (j.has("key") && j.has("value"))
                         {
                             mixerStream.getMixerSettings().put(j.optString("key"), j.opt("value"));
-                            if (mixerStream instanceof MixerStreamProcess)
-                            {
-                                MixerStreamProcess msp = (MixerStreamProcess) mixerStream;
-                                msp.rebuildExec();
-                            }
                             if (mixerStream.isAlive())
                             {
                                 mixerStream.restart();

@@ -26,6 +26,7 @@ import javax.sound.sampled.TargetDataLine;
 import org.json.JSONObject;
 import org.openstatic.kiss.APIWebServer;
 import org.openstatic.kiss.JavaKISSMain;
+import org.openstatic.sound.dtmf.DTMFUtil;
 
 import net.sourceforge.lame.lowlevel.LameEncoder;
 import net.sourceforge.lame.mp3.Lame;
@@ -51,6 +52,8 @@ public class MixerStreamHardware implements Runnable, MixerStream
     private File recordingFile;
     private FileOutputStream recordingOutputStream;
     private long recordingStart;
+    private DTMFUtil dtmfUtil;
+    private char lastDTMF;
 
     public MixerStreamHardware(Mixer.Info mixerInfo, JSONObject mixerSettings)
     {
@@ -70,7 +73,22 @@ public class MixerStreamHardware implements Runnable, MixerStream
         this.listeners = new ArrayList<MixerStreamListener>();
         this.mixerInfo = mixerInfo;
         this.mixer = AudioSystem.getMixer(mixerInfo);
+        this.dtmfUtil = new DTMFUtil(this);
+        this.lastDTMF = '_';
     }
+
+    @Override
+    public float getSampleRate()
+    {
+        return this.format.getSampleRate();
+    }
+
+    @Override
+    public int getNumChannels()
+    {
+        return this.format.getChannels();
+    }
+
 
     @Override
     public void start()
@@ -86,6 +104,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     mixerSettings.optBoolean("signed", true),   // Is Signed?
                     mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
                 );
+                this.dtmfUtil = new DTMFUtil(this);
                 this.mixer.open();
                 this.targetLine = (TargetDataLine) AudioSystem.getTargetDataLine(this.format, this.mixerInfo);
                 targetLine.open(format);
@@ -303,14 +322,28 @@ public class MixerStreamHardware implements Runnable, MixerStream
             int GOOD_QUALITY_BITRATE = 128;
             LameEncoder encoder = new LameEncoder(audioInputStream.getFormat(), GOOD_QUALITY_BITRATE, MPEGMode.MONO, Lame.QUALITY_HIGHEST, USE_VARIABLE_BITRATE);
 
-            byte[] rawInputBuffer = new byte[encoder.getPCMBufferSize()];
-            byte[] mp3OutputBuffer = new byte[encoder.getPCMBufferSize()];
+            byte[] rawInputBuffer = new byte[4096];
+            byte[] mp3OutputBuffer = new byte[4096];
 
             int bytesRead;
             int bytesWritten;
 
             while(0 < (bytesRead = audioInputStream.read(rawInputBuffer))) 
             {
+                try
+                {
+                    //long frameCount = (rawInputBuffer.length / audioInputStream.getFrameLength());
+                    //System.err.println("Frame Length: " + String.valueOf(audioInputStream.getFrameLength()));
+                    //System.err.println("Buffer Length: " + String.valueOf(rawInputBuffer.length));
+                    char dtmfChar = this.dtmfUtil.decodeNextFrameMono(rawInputBuffer);
+                    if (dtmfChar != '_' && dtmfChar != this.lastDTMF)
+                    {
+                        System.err.println("DTMF: " +dtmfChar );
+                    }
+                    this.lastDTMF = dtmfChar;
+                } catch (Exception dtmfException) {
+                    dtmfException.printStackTrace(System.err);
+                }
                 this.rms = calcRMS(rawInputBuffer, bytesRead);
                 this.rmsEvents();
                 bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
@@ -344,7 +377,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
                 }
                 try
                 {
-                    Thread.sleep(50);
+                    Thread.sleep(10);
                 } catch (Exception e) {}
             }
 

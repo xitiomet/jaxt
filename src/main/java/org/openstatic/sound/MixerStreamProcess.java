@@ -31,6 +31,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openstatic.kiss.APIWebServer;
 import org.openstatic.kiss.JavaKISSMain;
+import org.openstatic.sound.dtmf.DTMFUtil;
 import org.tritonus.share.sampled.file.AudioOutputStream;
 
 import net.sourceforge.lame.lowlevel.LameEncoder;
@@ -61,6 +62,8 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private AudioFormat format;
     private String execString;
     private String playExecString;
+    private DTMFUtil dtmfUtil;
+    private char lastDTMF;
 
     public MixerStreamProcess(JSONObject mixerSettings)
     {
@@ -71,6 +74,24 @@ public class MixerStreamProcess implements Runnable, MixerStream
         this.outputMp3 = new ArrayList<OutputStream>();
         this.outputRaw = new ArrayList<OutputStream>();
         this.listeners = new ArrayList<MixerStreamListener>();
+        
+        rebuild();
+    }
+
+    @Override
+    public float getSampleRate()
+    {
+        return this.format.getSampleRate();
+    }
+
+    @Override
+    public int getNumChannels()
+    {
+        return this.format.getChannels();
+    }
+
+    public void rebuild()
+    {
         this.format = new AudioFormat(
             mixerSettings.optFloat("sampleRate", 44100),  // Sample Rate
             mixerSettings.optInt("sampleSizeInBits", 16),     // Size of SampleBits
@@ -78,11 +99,8 @@ public class MixerStreamProcess implements Runnable, MixerStream
             mixerSettings.optBoolean("signed", true),   // Is Signed?
             mixerSettings.optBoolean("bigEndian", false)   // Is Big Endian?
         );
-        rebuildExec();
-    }
-
-    public void rebuildExec()
-    {
+        this.dtmfUtil = new DTMFUtil(this);
+        this.lastDTMF = '_';
         if (this.mixerSettings.has("execute"))
         {
             JSONArray command = mixerSettings.optJSONArray("execute");
@@ -127,6 +145,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
     {
         if (!this.isAlive())
         {
+            this.rebuild();
             try
             {
                 this.format = new AudioFormat(
@@ -361,7 +380,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
             int GOOD_QUALITY_BITRATE = 128;
             LameEncoder encoder = new LameEncoder(audioInputStream.getFormat(), GOOD_QUALITY_BITRATE, MPEGMode.MONO, Lame.QUALITY_HIGHEST, USE_VARIABLE_BITRATE);
 
-            int pcmBuffSize = encoder.getPCMBufferSize();
+            int pcmBuffSize = 4096;
             byte[] rawInputBuffer = new byte[pcmBuffSize];
             byte[] mp3OutputBuffer = new byte[pcmBuffSize];
 
@@ -373,6 +392,20 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 if (audioInputStream.available() > 0)
                 {
                     bytesRead = audioInputStream.read(rawInputBuffer);
+                    try
+                    {
+                        //long frameCount = (rawInputBuffer.length / audioInputStream.getFrameLength());
+                        //System.err.println("Frame Length: " + String.valueOf(audioInputStream.getFrameLength()));
+                        //System.err.println("Buffer Length: " + String.valueOf(rawInputBuffer.length));
+                        char dtmfChar = this.dtmfUtil.decodeNextFrameMono(rawInputBuffer);
+                        if (dtmfChar != '_' && dtmfChar != this.lastDTMF)
+                        {
+                            System.err.println("DTMF: " +dtmfChar );
+                        }
+                        this.lastDTMF = dtmfChar;
+                    } catch (Exception dtmfException) {
+                        dtmfException.printStackTrace(System.err);
+                    }
                     this.rms = calcRMS(rawInputBuffer, bytesRead);
                     rmsEvents();
                     bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
@@ -409,7 +442,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     rmsEvents();
                     try
                     {
-                        Thread.sleep(50);
+                        Thread.sleep(10);
                     } catch (InterruptedException iex) {}
                 }
             }
