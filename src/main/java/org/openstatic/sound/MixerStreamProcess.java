@@ -13,7 +13,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -64,6 +66,8 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private String playExecString;
     private DTMFUtil dtmfUtil;
     private char lastDTMF;
+    private String dtmfSequence;
+    private long lastDTMFToneAt;
 
     public MixerStreamProcess(JSONObject mixerSettings)
     {
@@ -101,6 +105,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
         );
         this.dtmfUtil = new DTMFUtil(this);
         this.lastDTMF = '_';
+        this.dtmfSequence = "";
         if (this.mixerSettings.has("execute"))
         {
             JSONArray command = mixerSettings.optJSONArray("execute");
@@ -374,6 +379,55 @@ public class MixerStreamProcess implements Runnable, MixerStream
         t.start();
     }
 
+    private void fireDTMFSequence(final String dtmfSequence)
+    {
+        Thread t = new Thread(() -> {
+            this.listeners.forEach((l) -> l.onDTMFSequence(MixerStreamProcess.this, dtmfSequence));
+        });
+        t.start();
+    }
+
+    private void dtmfEvents(byte[] rawInputBuffer)
+    {
+        HashMap<Character, Integer> votes = new HashMap<Character, Integer>();
+        int length = rawInputBuffer.length;
+        int chunkSize = dtmfUtil.getFrameSize();
+        for (int i = 0; i < length; i += chunkSize) {
+            // The 'end' might exceed the array length.
+            int end = Math.min(length, i + chunkSize);
+
+            // Getting the subarray.
+            byte[] chunk = Arrays.copyOfRange(rawInputBuffer, i, end);
+            try
+            {
+                char dtmfChar = this.dtmfUtil.decodeNextFrameMono(chunk);
+                if (votes.containsKey(dtmfChar))
+                {
+                    votes.put(dtmfChar, votes.get(dtmfChar) +1);
+                } else {
+                    votes.put(dtmfChar, 1);
+                }
+            } catch (Exception xe) {}
+        }
+        Map.Entry<Character, Integer> maxEntry = votes.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
+        char dtmfChar = '_';
+        if (maxEntry != null)
+            dtmfChar = maxEntry.getKey();
+        if (dtmfChar != '_' && dtmfChar != this.lastDTMF)
+        {
+            fireDTMF(dtmfChar);
+            dtmfSequence += dtmfChar;
+            this.lastDTMFToneAt = System.currentTimeMillis();
+        }
+        this.lastDTMF = dtmfChar;
+        
+        if ((System.currentTimeMillis() - this.lastDTMFToneAt) > mixerSettings.optLong("dtmfTimeout", 5000l) && !dtmfSequence.equals(""))
+        {
+            fireDTMFSequence(this.dtmfSequence);
+            dtmfSequence = "";
+        }
+    }
+
     @Override
     public void run() 
     {
@@ -389,7 +443,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
             int GOOD_QUALITY_BITRATE = 128;
             LameEncoder encoder = new LameEncoder(audioInputStream.getFormat(), GOOD_QUALITY_BITRATE, MPEGMode.MONO, Lame.QUALITY_HIGHEST, USE_VARIABLE_BITRATE);
 
-            int pcmBuffSize = 4096;
+            int pcmBuffSize = 8192;
             byte[] rawInputBuffer = new byte[pcmBuffSize];
             byte[] mp3OutputBuffer = new byte[pcmBuffSize];
 
@@ -401,22 +455,9 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 if (audioInputStream.available() > 0)
                 {
                     bytesRead = audioInputStream.read(rawInputBuffer);
-                    try
-                    {
-                        //long frameCount = (rawInputBuffer.length / audioInputStream.getFrameLength());
-                        //System.err.println("Frame Length: " + String.valueOf(audioInputStream.getFrameLength()));
-                        //System.err.println("Buffer Length: " + String.valueOf(rawInputBuffer.length));
-                        char dtmfChar = this.dtmfUtil.decodeNextFrameMono(rawInputBuffer);
-                        if (dtmfChar != '_' && dtmfChar != this.lastDTMF)
-                        {
-                            this.fireDTMF(dtmfChar);
-                        }
-                        this.lastDTMF = dtmfChar;
-                    } catch (Exception dtmfException) {
-                        dtmfException.printStackTrace(System.err);
-                    }
                     this.rms = calcRMS(rawInputBuffer, bytesRead);
                     rmsEvents();
+                    dtmfEvents(rawInputBuffer);
                     bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
                     for (OutputStream outputMp3Stream : (ArrayList<OutputStream>) this.outputMp3.clone()) 
                     {

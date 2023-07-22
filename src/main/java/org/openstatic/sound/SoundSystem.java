@@ -232,6 +232,7 @@ public class SoundSystem
                 @Override
                 public void onShutdown(MixerStream mixerStream) {
                     asyncContext.complete();
+                    mixerStream.removeMixerStreamListener(this);
                 }
 
                 @Override
@@ -241,8 +242,12 @@ public class SoundSystem
 
                 @Override
                 public void onStartup(MixerStream mixerStream) {
-                    // TODO Auto-generated method stub
-                    throw new UnsupportedOperationException("Unimplemented method 'onStartup'");
+                    
+                }
+
+                @Override
+                public void onDTMFSequence(MixerStream mixerStream, String dtmfSequence) {
+                    
                 }
                 
             });

@@ -626,6 +626,8 @@ function setupWebsocket()
                     logInfo(jsonObject);
                 } else if (action == 'APRS') {
                     logAPRS(jsonObject);
+                } else if (action == 'dtmfSequence') {
+                    logDTMFSequence(jsonObject);
                 } else if (action == 'startaudio') {
                     if (playingDevice == jsonObject.devId)
                     {
@@ -801,6 +803,21 @@ function logRecording(jsonObject)
     {
         var line =  "<div id=\"" + divId + "\" style=\"color: #FF5733;\">( REC " + getDTString(d) + ") " + jsonObject.name + " <a href=\"" + jsonObject.uri + "\" target=\"_blank\">(Download)</a> <a href=\"#\" onclick=\"playAudio('" + jsonObject.uri + "');event.preventDefault();\">(Listen)</a> " + jsonObject.duration + "ms";
         line += "</div>";
+        console.innerHTML += line;
+        window.scrollTo(0,document.body.scrollHeight);
+    }
+}
+
+function logDTMFSequence(jsonObject)
+{
+    var console = document.getElementById('console');
+    var d = new Date();
+    if (jsonObject.hasOwnProperty('timestamp'))
+        d = new Date(jsonObject.timestamp);
+    var divId = jsonObject.sequence + "_" + d.getTime();
+    if (document.getElementById(divId) == undefined)
+    {
+        var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(DTMF " + getDTString(d) + ") " + jsonObject.device + ": " + jsonObject.sequence + "</div>";
         console.innerHTML += line;
         window.scrollTo(0,document.body.scrollHeight);
     }

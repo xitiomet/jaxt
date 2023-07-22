@@ -738,6 +738,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     public void onAudioInput(MixerStream mixerStream) {
         JSONObject jo = new JSONObject();
         jo.put("action", "incomingAudio");
+        jo.put("timestamp", System.currentTimeMillis());
         jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
         jo.put("device", mixerStream.getMixerName());
         broadcastJSONObject(jo);
@@ -747,6 +748,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     public void onDTMF(MixerStream ms, char dtmf) {
         JSONObject jo = new JSONObject();
         jo.put("action", "dtmf");
+        jo.put("timestamp", System.currentTimeMillis());
         jo.put("key", String.valueOf(dtmf));
         jo.put("devId", JavaKISSMain.soundSystem.getMixerId(ms));
         jo.put("device", ms.getMixerName());
@@ -757,6 +759,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     public void onSilence(MixerStream mixerStream) {
         JSONObject jo = new JSONObject();
         jo.put("action", "silence");
+        jo.put("timestamp", System.currentTimeMillis());
         jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
         jo.put("device", mixerStream.getMixerName());
         broadcastJSONObject(jo);
@@ -766,6 +769,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     public void onShutdown(MixerStream mixerStream) {
         JSONObject jo = new JSONObject();
         jo.put("action", "stopaudio");
+        jo.put("timestamp", System.currentTimeMillis());
         jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
         jo.put("device", mixerStream.getMixerName());
         broadcastJSONObject(jo);
@@ -774,10 +778,23 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     @Override
     public void onStartup(MixerStream mixerStream) {
         JSONObject jo = new JSONObject();
-        jo.put("action", "startaduio");
+        jo.put("action", "startaudio");
+        jo.put("timestamp", System.currentTimeMillis());
         jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
         jo.put("device", mixerStream.getMixerName());
         broadcastJSONObject(jo);
+    }
+
+    @Override
+    public void onDTMFSequence(MixerStream mixerStream, String dtmfSequence) {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "dtmfSequence");
+        jo.put("timestamp", System.currentTimeMillis());
+        jo.put("sequence", dtmfSequence);
+        jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
+        jo.put("device", mixerStream.getMixerName());
+        broadcastJSONObject(jo);
+        addHistory(jo);
     }
 
 }

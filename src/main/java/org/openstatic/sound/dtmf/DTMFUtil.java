@@ -60,7 +60,7 @@ public class DTMFUtil {
 	private static final double CUT_OFF_POWER = 0.004;
 	private static final double FFT_CUT_OFF_POWER_NOISE_RATIO = 0.46;
 	private static final double FFT_FRAME_DURATION = 0.030;
-	private static final double GOERTZEL_CUT_OFF_POWER_NOISE_RATIO = 0.87;
+	private static final double GOERTZEL_CUT_OFF_POWER_NOISE_RATIO = 0.77;
 	private static final double GOERTZEL_FRAME_DURATION = 0.045;
 
 	private boolean decoded;
@@ -186,6 +186,11 @@ public class DTMFUtil {
 				}
 			}
 		}
+	}
+
+	public int getFrameSize()
+	{
+		return this.frameSize;
 	}
 
 	/**
