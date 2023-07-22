@@ -335,6 +335,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 this.recordingFile = null;
                 this.recordingOutputStream = null;
                 this.recordingStart = 0;
+                this.listeners.forEach((l) -> l.onSilence(MixerStreamProcess.this));
             }
         });
         t.start();
@@ -360,6 +361,15 @@ public class MixerStreamProcess implements Runnable, MixerStream
             } else {
                 JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
             }
+            this.listeners.forEach((l) -> l.onAudioInput(MixerStreamProcess.this));
+        });
+        t.start();
+    }
+
+    private void fireDTMF(final char dtmf)
+    {
+        Thread t = new Thread(() -> {
+            this.listeners.forEach((l) -> l.onDTMF(MixerStreamProcess.this, dtmf));
         });
         t.start();
     }
@@ -367,12 +377,11 @@ public class MixerStreamProcess implements Runnable, MixerStream
     @Override
     public void run() 
     {
+        try
+        {
+            this.listeners.forEach((l) -> l.onStartup(this));
+        } catch (Exception xe) {}
         JavaKISSMain.mainLog("[AUDIO MIXER ACTIVATED] " + this.getMixerName() + " (" + this.execString + ")");
-        JSONObject startPacket = new JSONObject();
-        startPacket.put("action","startaudio");
-        startPacket.put("devId", JavaKISSMain.soundSystem.availableMixerStreams.indexOf(this));
-        if (JavaKISSMain.apiWebServer != null)
-            JavaKISSMain.apiWebServer.broadcastJSONObject(startPacket);
         AudioInputStream audioInputStream = new AudioInputStream(this.processInputStream, this.format, -1);
         try
         {
@@ -400,7 +409,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
                         char dtmfChar = this.dtmfUtil.decodeNextFrameMono(rawInputBuffer);
                         if (dtmfChar != '_' && dtmfChar != this.lastDTMF)
                         {
-                            System.err.println("DTMF: " +dtmfChar );
+                            this.fireDTMF(dtmfChar);
                         }
                         this.lastDTMF = dtmfChar;
                     } catch (Exception dtmfException) {
@@ -461,11 +470,6 @@ public class MixerStreamProcess implements Runnable, MixerStream
         {
             this.listeners.forEach((l) -> l.onShutdown(this));
         } catch (Exception xe) {}
-        JSONObject stopPacket = new JSONObject();
-        stopPacket.put("action","stopaudio");
-        stopPacket.put("devId", JavaKISSMain.soundSystem.availableMixerStreams.indexOf(this));
-        if (JavaKISSMain.apiWebServer != null)
-            JavaKISSMain.apiWebServer.broadcastJSONObject(stopPacket);
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.execString + ")");
     }
 

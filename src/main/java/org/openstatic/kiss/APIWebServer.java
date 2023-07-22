@@ -11,6 +11,7 @@ import org.openstatic.aprs.parser.Parser;
 import org.openstatic.aprs.parser.Position;
 import org.openstatic.aprs.parser.PositionPacket;
 import org.openstatic.sound.MixerStream;
+import org.openstatic.sound.MixerStreamListener;
 import org.openstatic.sound.MixerStreamProcess;
 import org.openstatic.sound.SoundSystem;
 
@@ -50,7 +51,7 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.ajax.JSON;
 
-public class APIWebServer implements AX25PacketListener, Runnable
+public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamListener
 {
     private Server httpServer;
     protected ArrayList<WebSocketSession> wsSessions;
@@ -89,6 +90,13 @@ public class APIWebServer implements AX25PacketListener, Runnable
         }
         this.pingPongThread = new Thread(this);
         this.pingPongThread.start();
+        this.refreshMixers();
+    }
+
+    public void refreshMixers()
+    {
+        JavaKISSMain.soundSystem.refreshMixers();
+        JavaKISSMain.soundSystem.getAvailableMixerStreams().forEach((ms) -> ms.addMixerStreamListener(APIWebServer.this));
     }
 
     public static synchronized String generateBigAlphaKey(int key_length)
@@ -222,7 +230,7 @@ public class APIWebServer implements AX25PacketListener, Runnable
                 } else if (action.equals("clearHistory")) {
                     this.packetHistory.clear();
                 } else if (action.equals("lsaudio")) {
-                    JavaKISSMain.soundSystem.refreshMixers();
+                    APIWebServer.this.refreshMixers();
                     JSONObject infoPacket = new JSONObject();
                     infoPacket.put("action", "lsaudio");
                     infoPacket.put("devices", JavaKISSMain.soundSystem.getAvailableDevices());
@@ -724,6 +732,52 @@ public class APIWebServer implements AX25PacketListener, Runnable
 
             }
         }
+    }
+
+    @Override
+    public void onAudioInput(MixerStream mixerStream) {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "incomingAudio");
+        jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
+        jo.put("device", mixerStream.getMixerName());
+        broadcastJSONObject(jo);
+    }
+
+    @Override
+    public void onDTMF(MixerStream ms, char dtmf) {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "dtmf");
+        jo.put("key", String.valueOf(dtmf));
+        jo.put("devId", JavaKISSMain.soundSystem.getMixerId(ms));
+        jo.put("device", ms.getMixerName());
+        broadcastJSONObject(jo);
+    }
+
+    @Override
+    public void onSilence(MixerStream mixerStream) {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "silence");
+        jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
+        jo.put("device", mixerStream.getMixerName());
+        broadcastJSONObject(jo);
+    }
+
+    @Override
+    public void onShutdown(MixerStream mixerStream) {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "stopaudio");
+        jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
+        jo.put("device", mixerStream.getMixerName());
+        broadcastJSONObject(jo);
+    }
+
+    @Override
+    public void onStartup(MixerStream mixerStream) {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "startaduio");
+        jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
+        jo.put("device", mixerStream.getMixerName());
+        broadcastJSONObject(jo);
     }
 
 }

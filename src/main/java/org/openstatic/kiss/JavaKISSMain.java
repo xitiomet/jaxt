@@ -227,9 +227,9 @@ public class JavaKISSMain implements AX25PacketListener, Runnable
             }
             KISSClient kClient = new KISSClient(settings.optString("host"), settings.optInt("port",8100));
             kClient.setTxDisabled(settings.optBoolean("txDisabled", false));
+            JavaKISSMain.soundSystem = new SoundSystem();
             JavaKISSMain jkm = new JavaKISSMain(kClient);
             JavaKISSMain.logAppend("main.log", "[STARTED]");
-            JavaKISSMain.soundSystem = new SoundSystem();
             JavaKISSMain.serialSystem = new SerialSystem();
             saveSettings();
             if (settings.has("terminal"))

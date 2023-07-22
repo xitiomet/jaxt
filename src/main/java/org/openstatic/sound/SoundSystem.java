@@ -120,6 +120,11 @@ public class SoundSystem
         }
     }
 
+    public ArrayList<MixerStream> getAvailableMixerStreams()
+    {
+        return this.availableMixerStreams;
+    }
+
     public JSONArray getAvailableDevices()
     {
         JSONArray ra = new JSONArray();
@@ -191,6 +196,11 @@ public class SoundSystem
         }
     }
 
+    public int getMixerId(MixerStream ms)
+    {
+        return this.availableMixerStreams.indexOf(ms);
+    }
+
     public MixerStream getMixer(int devId)
     {
         return this.availableMixerStreams.get(devId);
@@ -212,7 +222,7 @@ public class SoundSystem
             mixerStream.addMixerStreamListener(new MixerStreamListener() {
 
                 @Override
-                public void onAudioStart(MixerStream mixerStream) {
+                public void onAudioInput(MixerStream mixerStream) {
                 }
 
                 @Override
@@ -222,6 +232,17 @@ public class SoundSystem
                 @Override
                 public void onShutdown(MixerStream mixerStream) {
                     asyncContext.complete();
+                }
+
+                @Override
+                public void onDTMF(MixerStream mixerStream, char dtmf) {
+                    
+                }
+
+                @Override
+                public void onStartup(MixerStream mixerStream) {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'onStartup'");
                 }
                 
             });
