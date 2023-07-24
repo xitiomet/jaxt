@@ -69,6 +69,12 @@ public class SoundSystem
                 mSettings.put("name", mixerHardwareName);
                 mSettings.put("type", "hardware");
                 mSettings.put("hardwareName", mixerHardwareName);
+                mSettings.put("dtmf", false);
+                mSettings.put("disabled", false);
+                mSettings.put("autoRecord", false);
+                mSettings.put("autoStart", false);
+                mSettings.put("silenceTimeout", 5000);
+                mSettings.put("sampleRate", 44100);
                 // Check to see if the mixer is defined in settings
                 for(String key : definedDevices.keySet())
                 {

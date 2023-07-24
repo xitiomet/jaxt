@@ -52,6 +52,27 @@ public class SerialSystem
         }
     }
 
+    public void setDTR(String serialPort, boolean value)
+    {
+        SerialPort port = this.ports.get(serialPort);
+        if (port != null)
+        {
+            if (!port.isOpen())
+                port.openPort();
+            if (value)
+            {
+                port.setDTR();
+                JavaKISSMain.mainLog("[PTT DTR PRESSED] " + serialPort);
+            } else {
+                port.clearDTR();
+                port.closePort();
+                JavaKISSMain.mainLog("[PTT DTR RELEASED] " + serialPort);
+            }
+        } else {
+            JavaKISSMain.mainLog("[PTT ERROR] Couldnt Find " + serialPort);
+        }
+    }
+
     public JSONArray getSerialPorts()
     {
         JSONArray ra = new JSONArray();

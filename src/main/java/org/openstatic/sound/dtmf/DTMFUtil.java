@@ -29,6 +29,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.sound.sampled.UnsupportedAudioFileException;
 
@@ -60,7 +63,7 @@ public class DTMFUtil {
 	private static final double CUT_OFF_POWER = 0.004;
 	private static final double FFT_CUT_OFF_POWER_NOISE_RATIO = 0.46;
 	private static final double FFT_FRAME_DURATION = 0.030;
-	private static final double GOERTZEL_CUT_OFF_POWER_NOISE_RATIO = 0.77;
+	private static final double GOERTZEL_CUT_OFF_POWER_NOISE_RATIO = 0.87;
 	private static final double GOERTZEL_FRAME_DURATION = 0.045;
 
 	private boolean decoded;
@@ -472,8 +475,49 @@ public class DTMFUtil {
 		return doubles;
 	}
 
-	public char decodeNextFrameMono(byte[] buffer) throws DTMFDecoderException, IOException {
-		return this.decodeNextFrameMono(toDoubleArray(buffer));
+	// This works on a byte array and breaks down the frame into better sized chunks
+	public char decodeNextFrameMono(byte[] buffer)
+	{
+		HashMap<Character, Integer> votes = new HashMap<Character, Integer>();
+        int length = buffer.length;
+        int chunkSize = this.getFrameSize();
+        for (int i = 0; i < length; i += chunkSize) {
+            // The 'end' might exceed the array length.
+            int end = Math.min(length, i + chunkSize);
+
+            // Getting the subarray.
+            byte[] chunk = Arrays.copyOfRange(buffer, i, end);
+            try
+            {
+                char dtmfChar = this.decodeNextFrameMono(toDoubleArray(chunk));
+                if (votes.containsKey(dtmfChar))
+                {
+                    votes.put(dtmfChar, votes.get(dtmfChar) +1);
+                } else {
+                    votes.put(dtmfChar, 1);
+                }
+            } catch (Exception xe) {}
+        }
+		int votesSize = votes.size();
+		if (votesSize == 2)
+		{
+			//chances are if we detected a tone and silence, there was a tone.
+			if (votes.containsKey('_'))
+			{
+				votes.remove('_');
+			}
+		}
+		//System.err.print(String.valueOf(votesSize) +  "  " + votes.entrySet().stream().map((entry) -> { return entry.getKey().toString() + ":" + entry.getValue().toString(); }).collect(Collectors.joining(", ")));
+		Map.Entry<Character, Integer> maxEntry = votes.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
+        char dtmfChar = '_';
+        if (maxEntry != null)
+            dtmfChar = maxEntry.getKey();
+		if (maxEntry.getValue() < 2)
+		{
+			dtmfChar = '_';
+		}
+		//System.err.println("  =  " + dtmfChar);
+		return dtmfChar;
 	}
 	
 	/**
@@ -485,7 +529,7 @@ public class DTMFUtil {
 	 * @throws WavFileException
 	 * @throws DTMFDecoderException
 	 */
-	public char decodeNextFrameMono(double[] buffer) throws DTMFDecoderException, IOException {
+	private char decodeNextFrameMono(double[] buffer) throws DTMFDecoderException, IOException {
 		int bufferSize = (int) buffer.length;
 		double[] tempBuffer11 = new double[bufferSize];
 		double[] tempBuffer21 = new double[bufferSize];

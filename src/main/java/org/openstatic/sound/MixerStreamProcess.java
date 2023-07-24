@@ -389,37 +389,17 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     private void dtmfEvents(byte[] rawInputBuffer)
     {
-        HashMap<Character, Integer> votes = new HashMap<Character, Integer>();
-        int length = rawInputBuffer.length;
-        int chunkSize = dtmfUtil.getFrameSize();
-        for (int i = 0; i < length; i += chunkSize) {
-            // The 'end' might exceed the array length.
-            int end = Math.min(length, i + chunkSize);
-
-            // Getting the subarray.
-            byte[] chunk = Arrays.copyOfRange(rawInputBuffer, i, end);
-            try
-            {
-                char dtmfChar = this.dtmfUtil.decodeNextFrameMono(chunk);
-                if (votes.containsKey(dtmfChar))
-                {
-                    votes.put(dtmfChar, votes.get(dtmfChar) +1);
-                } else {
-                    votes.put(dtmfChar, 1);
-                }
-            } catch (Exception xe) {}
-        }
-        Map.Entry<Character, Integer> maxEntry = votes.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
-        char dtmfChar = '_';
-        if (maxEntry != null)
-            dtmfChar = maxEntry.getKey();
-        if (dtmfChar != '_' && dtmfChar != this.lastDTMF)
+        if (!this.longSilence)
         {
-            fireDTMF(dtmfChar);
-            dtmfSequence += dtmfChar;
-            this.lastDTMFToneAt = System.currentTimeMillis();
+            char dtmfChar = dtmfUtil.decodeNextFrameMono(rawInputBuffer);
+            if (dtmfChar != '_' && dtmfChar != this.lastDTMF)
+            {
+                fireDTMF(dtmfChar);
+                dtmfSequence += dtmfChar;
+                this.lastDTMFToneAt = System.currentTimeMillis();
+            }
+            this.lastDTMF = dtmfChar;
         }
-        this.lastDTMF = dtmfChar;
         
         if ((System.currentTimeMillis() - this.lastDTMFToneAt) > mixerSettings.optLong("dtmfTimeout", 5000l) && !dtmfSequence.equals(""))
         {
@@ -457,7 +437,10 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     bytesRead = audioInputStream.read(rawInputBuffer);
                     this.rms = calcRMS(rawInputBuffer, bytesRead);
                     rmsEvents();
-                    dtmfEvents(rawInputBuffer);
+                    if (mixerSettings.optBoolean("dtmf", false))
+                    {
+                        dtmfEvents(rawInputBuffer);
+                    }
                     bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
                     for (OutputStream outputMp3Stream : (ArrayList<OutputStream>) this.outputMp3.clone()) 
                     {
