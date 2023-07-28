@@ -54,6 +54,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private double rms;
     private boolean silence;
     private boolean longSilence;
+    private boolean userStop;
     private long silenceStartAt;
     private JSONObject mixerSettings;
     private File recordingFile;
@@ -74,6 +75,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
         this.mixerSettings = mixerSettings;
         this.silenceStartAt = System.currentTimeMillis();
         this.silence = true;
+        this.userStop = false;
         this.longSilence = true;
         this.outputMp3 = new ArrayList<OutputStream>();
         this.outputRaw = new ArrayList<OutputStream>();
@@ -174,6 +176,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     public void stop()
     {
+        this.userStop = true;
         if (this.processInputStream != null)
         {
             try
@@ -411,6 +414,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
     @Override
     public void run() 
     {
+        this.userStop = false;
         try
         {
             this.listeners.forEach((l) -> l.onStartup(this));
@@ -495,6 +499,18 @@ public class MixerStreamProcess implements Runnable, MixerStream
             this.listeners.forEach((l) -> l.onShutdown(this));
         } catch (Exception xe) {}
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.execString + ")");
+        if (!userStop && this.mixerSettings.optBoolean("autoRestart", true))
+        {
+            Thread x = new Thread(() -> {
+                try
+                {
+                    Thread.sleep(2000);
+                    MixerStreamProcess.this.start();
+                    JavaKISSMain.mainLog("[AUDIO MIXER AUTO-RESTART] " + MixerStreamProcess.this.getMixerName() + " (" + MixerStreamProcess.this.execString + ")");
+                } catch (Exception rsE) {}
+            });
+            x.start();
+        }
     }
 
     @Override
