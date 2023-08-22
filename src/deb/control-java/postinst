@@ -1,0 +1,8 @@
+#!/bin/bash
+echo irc-gpt-bot Post-Install Script Running!
+update-rc.d jaxt defaults
+update-rc.d jaxt enable
+/etc/init.d/jaxt start
+echo JAXT Server available at http://127.0.0.1:8101/
+echo default password is "changeme"
+echo edit /etc/jaxt/jaxt.json to change password!

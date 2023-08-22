@@ -1,0 +1,17 @@
+#!/bin/bash
+echo jaxt Pre-Install Script Running!
+echo Creating jaxt user
+useradd -s /usr/sbin/nologin -r -M jaxt -d /etc/jaxt
+if [[ ! -e /etc/jaxt ]]; then
+    mkdir /etc/jaxt
+    chown -R jaxt:jaxt /etc/jaxt
+    echo Created /etc/jaxt/
+    echo "{\"apiPassword\":\"changeme\",\"apiPort\": 8101,\"logPath\":\"/var/log/jaxt\"}" > /etc/jaxt/jaxt.json
+    chown jaxt:jaxt /etc/jaxt/jaxt.json
+    echo Created config /etc/jaxt/jaxt.json
+fi
+if [[ ! -e /var/log/jaxt ]]; then
+    mkdir /var/log/jaxt
+    chown -R jaxt:jaxt /var/log/jaxt
+    echo Created /var/log/jaxt/
+fi

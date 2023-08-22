@@ -3,6 +3,6 @@ Version: 1.0
 Section: misc
 Priority: low
 Architecture: all
-Description: A Fun Program
+Description: An AX.25 Utility and remote radio server
 Maintainer: openstatic.org <support@openstatic.org>
 Depends: default-jre

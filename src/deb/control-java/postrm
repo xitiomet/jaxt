@@ -1,0 +1,11 @@
+#!/bin/bash
+echo jaxt Post-Remove Script Running!
+if [ "$1" = remove ]; then
+    echo Removing jaxt user
+    deluser --force jaxt
+fi
+if [ "$1" = purge ]; then
+    echo Removing jaxt directory
+    rm -R /etc/jaxt/
+    rm -R /var/log/jaxt/
+fi
