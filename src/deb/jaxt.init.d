@@ -17,7 +17,7 @@ CWD=/var/log/jaxt
 JVM_ARGS=
 JAR_PATH=/usr/share/java/jaxt.jar
 PROGRAM=/usr/bin/java
-PROGRAM_ARGS="$JVM_ARGS -jar $JAR_PATH -l /var/log/jaxt -f /etc/jaxt/jaxt.json"
+PROGRAM_ARGS="$JVM_ARGS -jar $JAR_PATH -l /var/log/jaxt -f /etc/jaxt/jaxt.json -c /etc/jaxt/commands.json"
 
 start() {
     echo -n "Starting jaxt Server...."

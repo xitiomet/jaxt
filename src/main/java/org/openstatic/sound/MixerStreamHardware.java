@@ -424,7 +424,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
             this.targetLine.stop();
             this.targetLine.close();
         }
-        this.listeners.forEach((l) -> l.onShutdown(this));
+        ((ArrayList<MixerStreamListener>) this.listeners.clone()).forEach((l) -> l.onShutdown(this));
         JavaKISSMain.mainLog("[AUDIO MIXER DEACTIVATED] " + this.getMixerName() + " (" + this.mixer.getMixerInfo().getName() + ")");
     }
 

@@ -46,6 +46,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
 {
     private ProcessBuilder processBuilder;
     private ProcessBuilder playExecuteProcessBuilder;
+    private ProcessBuilder stopExecuteProcessBuilder;
     private Process process;
     private ArrayList<OutputStream> outputMp3;
     private ArrayList<OutputStream> outputRaw;
@@ -65,6 +66,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private AudioFormat format;
     private String execString;
     private String playExecString;
+    private String stopExecString;
     private DTMFUtil dtmfUtil;
     private char lastDTMF;
     private String dtmfSequence;
@@ -145,6 +147,25 @@ public class MixerStreamProcess implements Runnable, MixerStream
             this.playExecString = commandArray.stream().collect(Collectors.joining(" "));
             this.playExecuteProcessBuilder = new ProcessBuilder(commandArray);
         }
+
+        if (this.mixerSettings.has("stopExecute"))
+        {
+            JSONArray command = mixerSettings.optJSONArray("stopExecute");
+            final ArrayList<String> commandArray = new ArrayList<String>();
+            for(int i = 0; i < command.length(); i++)
+            {
+                String cs = command.getString(i);
+                Set<String> keySet = mixerSettings.keySet();
+                for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+                {
+                    String key = keyIterator.next();
+                    cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
+                }
+                commandArray.add(cs);
+            }
+            this.stopExecString = commandArray.stream().collect(Collectors.joining(" "));
+            this.stopExecuteProcessBuilder = new ProcessBuilder(commandArray);
+        }
     }
 
     @Override
@@ -200,6 +221,22 @@ public class MixerStreamProcess implements Runnable, MixerStream
         if (this.process != null)
         {
             this.process.destroy();
+        }
+        if (this.stopExecuteProcessBuilder != null)
+        {
+            Thread t = new Thread(()-> {
+                try
+                {
+                    Thread.sleep(1000);
+                    JavaKISSMain.mainLog("[STOP EXECUTE] " + this.getMixerName() + " (" + this.stopExecString + ")");
+                    Process stopExecProc = this.stopExecuteProcessBuilder.start();
+                    stopExecProc.waitFor();
+                    JavaKISSMain.mainLog("[STOP EXECUTE TERMINATED] " + this.getMixerName() + " (" + this.stopExecString + ")");
+                } catch (Exception e) {
+
+                }
+            });
+            t.start();
         }
     }
 

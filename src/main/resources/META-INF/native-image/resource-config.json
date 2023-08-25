@@ -95,6 +95,9 @@
       "pattern":"\\Qjaxt/speaker-32.png\\E"
     }, 
     {
+      "pattern":"\\Qjaxt/start.png\\E"
+    }, 
+    {
       "pattern":"\\Qjaxt/term.html\\E"
     }, 
     {

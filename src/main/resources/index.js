@@ -512,8 +512,17 @@ function listen()
                     var i = 0;
                     for(const recDev of data.devices)
                     {
-                        if (data.state[recDev].canBeRecorded == true)
+                        var devState = data.state[recDev];
+                        if (devState.canBeRecorded == true)
                         {
+                            var devDiv = document.createElement("div");
+                            devDiv.style.width = '100%';
+                            devDiv.style.height = '54px';
+                            devDiv.style.display = 'flex';
+                            devDiv.style.border = 'none';
+                            devDiv.style.padding = '0px 0px 0px 0px';
+                            devDiv.style.margin = '0px 0px 0px 0px';
+
                             var devButton = document.createElement("button");
                             devButton.id = "audioDev_" + i;
                             devButton.onclick = function() {
@@ -522,22 +531,58 @@ function listen()
                                 listenClick(devId);
                             };
                             devButton.innerText = recDev;
-                            devButton.style.width = '100%';
-                            devButton.style.height = '48px';
-                            selectDeviceDiv.appendChild(devButton);
+                            devButton.style.width = '80%';
+                            devButton.style.height = '54px';
+
+                            var stopButton = document.createElement("button");
+                            stopButton.id = "astopDev_" + i;
+                            if (devState.isAlive)
+                            {
+                                stopButton.title = 'Stop Device';
+                                stopButton.onclick = function() {
+                                    var devId = parseInt(this.id.substr(9));
+                                    //alert(devId);
+                                    sendEvent({"action":"stopaudio", "devId": devId});
+                                    var sdd = document.getElementById('selectDeviceDiv');
+                                    var bodyTag = document.getElementById('bodyTag');
+                                    if (sdd != null)
+                                        bodyTag.removeChild(sdd);
+                                };
+                                stopButton.style.backgroundImage = "url('quit.png')";
+                            } else {
+                                stopButton.title = 'Start Device';
+                                stopButton.onclick = function() {
+                                    var devId = parseInt(this.id.substr(9));
+                                    //alert(devId);
+                                    sendEvent({"action":"startaudio", "devId": devId});
+                                    var sdd = document.getElementById('selectDeviceDiv');
+                                    var bodyTag = document.getElementById('bodyTag');
+                                    if (sdd != null)
+                                        bodyTag.removeChild(sdd);
+                                };
+                                stopButton.style.backgroundImage = "url('start.png')";
+                            }
+                            stopButton.style.backgroundPosition = 'center';
+                            stopButton.style.backgroundRepeat = 'no-repeat';
+                            stopButton.style.width = '20%';
+                            stopButton.style.height = '54px';
+
+                            devDiv.appendChild(devButton);
+                            devDiv.appendChild(stopButton);
+                            selectDeviceDiv.appendChild(devDiv);
                         }
                         i++;
                     }
                     var devButton = document.createElement("button");
                     devButton.onclick = () => { listenClick(-1); }
                     devButton.style.width = '100%';
-                    devButton.style.height = '48px';
+                    devButton.style.height = '54px';
                     devButton.style.backgroundColor = 'red';
                     devButton.style.fontSize = '18px';
                     selectDeviceDiv.appendChild(devButton);
                     if (audioElement.duration > 0 && !audioElement.paused)
                     {
-                        devButton.innerText = "STOP";
+                        devButton.innerText = "MUTE";
                     } else {
                         devButton.innerText = "CANCEL";
                     }

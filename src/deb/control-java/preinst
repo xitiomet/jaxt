@@ -2,6 +2,9 @@
 echo jaxt Pre-Install Script Running!
 echo Creating jaxt user
 useradd -s /usr/sbin/nologin -r -M jaxt -d /etc/jaxt
+adduser jaxt audio
+adduser jaxt plugdev
+adduser jaxt dialout
 if [[ ! -e /etc/jaxt ]]; then
     mkdir /etc/jaxt
     chown -R jaxt:jaxt /etc/jaxt
