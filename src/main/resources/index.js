@@ -217,7 +217,7 @@ var commands = {
                 {
                     var pttType = v[0];
                     var second = v[1];
-                    if (pttType == "rts")
+                    if (pttType == "rts" || pttType == "dtr")
                         v = {"type": pttType, "serialPort": second};
                     else
                         v = {"type": "none"};

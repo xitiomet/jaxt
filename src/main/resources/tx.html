@@ -138,7 +138,9 @@
                             var i = 0;
                             for(const playDev of data.devices)
                             {
-                                if (data.state[playDev].canPlayTo == true)
+                                var devState = data.state[playDev];
+                                var devSettings = devState.settings;
+                                if (devState.canPlayTo == true && devSettings.hasOwnProperty('ptt'))
                                 {
                                     var devOption = document.createElement("option");
                                     devOption.value = i;
