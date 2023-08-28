@@ -519,20 +519,41 @@ function listen()
                             devDiv.style.width = '100%';
                             devDiv.style.height = '54px';
                             devDiv.style.display = 'flex';
-                            devDiv.style.border = 'none';
+                            devDiv.style.border = '1px dotted black';
                             devDiv.style.padding = '0px 0px 0px 0px';
                             devDiv.style.margin = '0px 0px 0px 0px';
 
-                            var devButton = document.createElement("button");
-                            devButton.id = "audioDev_" + i;
-                            devButton.onclick = function() {
+
+                            var textDiv = document.createElement("div");
+                            textDiv.style.width = '100%';
+                            textDiv.style.height = '54px';
+                            textDiv.style.display = 'flex';
+                            textDiv.style.border = 'none';
+                            textDiv.style.padding = '0px 0px 0px 0px';
+                            textDiv.style.margin = '0px 0px 0px 0px';
+                            textDiv.style.display = 'inline-block';
+                            textDiv.style.verticalAlign = 'middle';
+                            textDiv.style.textAlign = 'center';
+                            textDiv.style.color = 'black';
+                            var extraText = '';
+                            if (devState.settings.hasOwnProperty('frequency'))
+                            {
+                                extraText += "<i>Frequency " + devState.settings.frequency + "hz</i>";
+                            }
+                            textDiv.innerHTML = "<span style=\"padding: 4px 4px 4px 4px;\"><b>" + recDev + "</b><br />" + extraText + "</span>";
+
+                            var listenButton = document.createElement("button");
+                            listenButton.id = "audioDev_" + i;
+                            listenButton.onclick = function() {
                                 var devId = parseInt(this.id.substr(9));
                                 //alert(devId);
                                 listenClick(devId);
                             };
-                            devButton.innerText = recDev;
-                            devButton.style.width = '80%';
-                            devButton.style.height = '54px';
+                            listenButton.style.width = '62px';
+                            listenButton.style.height = '54px';
+                            listenButton.style.backgroundPosition = 'center';
+                            listenButton.style.backgroundRepeat = 'no-repeat';
+                            listenButton.style.backgroundImage = "url('speaker-48.png')";
 
                             var stopButton = document.createElement("button");
                             stopButton.id = "astopDev_" + i;
@@ -564,10 +585,11 @@ function listen()
                             }
                             stopButton.style.backgroundPosition = 'center';
                             stopButton.style.backgroundRepeat = 'no-repeat';
-                            stopButton.style.width = '20%';
+                            stopButton.style.width = '62px';
                             stopButton.style.height = '54px';
 
-                            devDiv.appendChild(devButton);
+                            devDiv.appendChild(textDiv);
+                            devDiv.appendChild(listenButton);
                             devDiv.appendChild(stopButton);
                             selectDeviceDiv.appendChild(devDiv);
                         }

@@ -259,20 +259,10 @@ public class MixerStreamHardware implements Runnable, MixerStream
                 {
                     this.recordingOutputStream.close();
                 } catch (Exception e) {}
-                long recordingDuration = this.silenceStartAt - this.recordingStart;
+                final long recordingDuration = this.silenceStartAt - this.recordingStart;
                 if (recordingDuration >= this.mixerSettings.optLong("minimumRecordDuration", 500))
                 {
-                    if (JavaKISSMain.apiWebServer != null)
-                    {
-                        JSONObject recordingEvent = new JSONObject();
-                        recordingEvent.put("action", "recording");
-                        recordingEvent.put("name", this.recordingFile.getName());
-                        recordingEvent.put("timestamp", System.currentTimeMillis());
-                        recordingEvent.put("duration",recordingDuration);
-                        recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
-                        JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
-                        JavaKISSMain.apiWebServer.addHistory(recordingEvent);
-                    }
+                    this.listeners.forEach((l) -> l.onRecording(MixerStreamHardware.this, recordingDuration, this.recordingFile));
                 } else {
                     try
                     {

@@ -11,30 +11,19 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.Line;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.Mixer;
-import javax.sound.sampled.TargetDataLine;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.openstatic.kiss.APIWebServer;
 import org.openstatic.kiss.JavaKISSMain;
 import org.openstatic.sound.dtmf.DTMFUtil;
-import org.tritonus.share.sampled.file.AudioOutputStream;
 
 import net.sourceforge.lame.lowlevel.LameEncoder;
 import net.sourceforge.lame.mp3.Lame;
@@ -355,21 +344,10 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 {
                     this.recordingOutputStream.close();
                 } catch (Exception e) {}
-                long recordingDuration = (System.currentTimeMillis() - this.recordingStart);
-                
+                final long recordingDuration = (System.currentTimeMillis() - this.recordingStart);
                 if (recordingDuration >= this.mixerSettings.optLong("minimumRecordDuration", 500))
                 {
-                    if (JavaKISSMain.apiWebServer != null)
-                    {
-                        JSONObject recordingEvent = new JSONObject();
-                        recordingEvent.put("action", "recording");
-                        recordingEvent.put("name", this.recordingFile.getName());
-                        recordingEvent.put("timestamp", System.currentTimeMillis());
-                        recordingEvent.put("duration",recordingDuration);
-                        recordingEvent.put("uri", "jaxt/api/logs/" + this.getMixerName() + "/" + this.recordingFile.getName());
-                        JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
-                        JavaKISSMain.apiWebServer.addHistory(recordingEvent);
-                    }
+                    this.listeners.forEach((l) -> l.onRecording(MixerStreamProcess.this, recordingDuration, this.recordingFile));
                 } else {
                     try
                     {

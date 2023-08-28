@@ -1,5 +1,6 @@
 package org.openstatic.sound;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -253,6 +254,11 @@ public class SoundSystem
 
                 @Override
                 public void onDTMFSequence(MixerStream mixerStream, String dtmfSequence) {
+                    
+                }
+
+                @Override
+                public void onRecording(MixerStream mixerStream, long recordingDuration, File recordingFile) {
                     
                 }
                 

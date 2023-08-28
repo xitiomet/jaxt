@@ -797,4 +797,16 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
         addHistory(jo);
     }
 
+    @Override
+    public void onRecording(MixerStream mixerStream, long recordingDuration, File recordingFile) {
+        JSONObject recordingEvent = new JSONObject();
+        recordingEvent.put("action", "recording");
+        recordingEvent.put("name", recordingFile.getName());
+        recordingEvent.put("timestamp", System.currentTimeMillis());
+        recordingEvent.put("duration",recordingDuration);
+        recordingEvent.put("uri", "jaxt/api/logs/" + mixerStream.getMixerName() + "/" + recordingFile.getName());
+        JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
+        JavaKISSMain.apiWebServer.addHistory(recordingEvent);
+    }
+
 }
