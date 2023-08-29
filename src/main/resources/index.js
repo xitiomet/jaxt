@@ -198,6 +198,13 @@ var commands = {
         },
         description: 'Start an audio device (use lsaudio for dev#)',
     },
+    monitor: {
+        f: (args) => {
+          sendEvent({"action":"monitoraudio", "sourceDevId": parseInt(args[0]) , "destDevId": parseInt(args[1])});
+          prompt(term);
+        },
+        description: 'Monitor an audio device from another audio device (use lsaudio for dev#)',
+    },
     setaudio: {
         f: (args) => {
           var event = {"action":"setaudio", "devId": parseInt(args[0])};

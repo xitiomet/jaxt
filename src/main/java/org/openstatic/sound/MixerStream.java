@@ -1,6 +1,7 @@
 package org.openstatic.sound;
 
 import java.io.OutputStream;
+
 import org.json.JSONObject;
 
 public interface MixerStream 
@@ -14,6 +15,7 @@ public interface MixerStream
     public void addMixerStreamListener(MixerStreamListener l);
     public void removeMixerStreamListener(MixerStreamListener l);
     public void play(byte[] clip);
+    public OutputStream getOutputStream();
     public int outputStreamCount();
     public int getNumChannels();
     public float getSampleRate();

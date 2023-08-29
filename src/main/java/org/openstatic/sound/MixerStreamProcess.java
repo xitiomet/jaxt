@@ -626,4 +626,22 @@ public class MixerStreamProcess implements Runnable, MixerStream
             t.start();
         }
     }
+
+    @Override
+    public OutputStream getOutputStream() 
+    {
+        if (this.playExecuteProcessBuilder != null)
+        {
+            try
+            {
+                Process playExecProc = this.playExecuteProcessBuilder.start();
+                OutputStream pepOutputStream = playExecProc.getOutputStream();
+                return pepOutputStream;
+            } catch (Exception e) {
+                return null;
+            }      
+        } else {
+            return this.processOutputStream;
+        }
+    }
 }
