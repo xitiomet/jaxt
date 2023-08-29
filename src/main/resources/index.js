@@ -540,7 +540,8 @@ function listen()
                             {
                                 extraText += "<i>Frequency " + devState.settings.frequency + "hz</i>";
                             }
-                            textDiv.innerHTML = "<span style=\"padding: 4px 4px 4px 4px;\"><b>" + recDev + "</b><br />" + extraText + "</span>";
+                            var devTitle = "<b style=\"font-size: 18px;\">" + recDev + "</b>";
+                            textDiv.innerHTML = "<div style=\"padding-top: 6px;\">" + devTitle + "<br />" + extraText + "</div>";
 
                             var listenButton = document.createElement("button");
                             listenButton.id = "audioDev_" + i;
@@ -554,6 +555,14 @@ function listen()
                             listenButton.style.backgroundPosition = 'center';
                             listenButton.style.backgroundRepeat = 'no-repeat';
                             listenButton.style.backgroundImage = "url('speaker-48.png')";
+                            if (playingDevice == i)
+                            {
+                                listenButton.style.backgroundColor = "lightgreen";
+                                textDiv.style.backgroundColor = "lightgreen";
+                            } else if (!devState.isAlive) {
+                                textDiv.style.backgroundColor = "lightgray";
+
+                            }
 
                             var stopButton = document.createElement("button");
                             stopButton.id = "astopDev_" + i;
@@ -595,19 +604,27 @@ function listen()
                         }
                         i++;
                     }
-                    var devButton = document.createElement("button");
-                    devButton.onclick = () => { listenClick(-1); }
-                    devButton.style.width = '100%';
-                    devButton.style.height = '54px';
-                    devButton.style.backgroundColor = 'red';
-                    devButton.style.fontSize = '18px';
-                    selectDeviceDiv.appendChild(devButton);
-                    if (audioElement.duration > 0 && !audioElement.paused)
-                    {
-                        devButton.innerText = "MUTE";
-                    } else {
-                        devButton.innerText = "CANCEL";
-                    }
+                    var muteButton = document.createElement("button");
+                    muteButton.onclick = () => { listenClick(-1); }
+                    muteButton.style.width = '100%';
+                    muteButton.style.height = '54px';
+                    muteButton.style.backgroundColor = 'red';
+                    muteButton.style.fontSize = '18px';
+                    muteButton.innerText = "MUTE";
+                    selectDeviceDiv.appendChild(muteButton);
+
+                    var cancelButton = document.createElement("button");
+                    cancelButton.onclick = () => { 
+                        var sdd = document.getElementById('selectDeviceDiv');
+                        var bodyTag = document.getElementById('bodyTag');
+                        if (sdd != null)
+                            bodyTag.removeChild(sdd);
+                     }
+                    cancelButton.style.width = '100%';
+                    cancelButton.style.height = '54px';
+                    cancelButton.style.fontSize = '18px';
+                    cancelButton.innerText = "CANCEL";
+                    selectDeviceDiv.appendChild(cancelButton);
                     document.getElementById('bodyTag').appendChild(selectDeviceDiv);
                 } else {
                     alert("No Audio Devices found!");
