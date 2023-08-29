@@ -269,6 +269,14 @@ public class MixerStreamProcess implements Runnable, MixerStream
         }
     }
 
+    public void removeRawTargetStream(OutputStream os)
+    {
+        if (this.outputRaw.contains(os))
+        {
+            this.outputRaw.remove(os);
+        }
+    }
+
     @Override
     public int outputStreamCount()
     {
@@ -467,7 +475,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
                         {
                             outputMp3Stream.write(mp3OutputBuffer,0,bytesWritten);
                         } catch (Exception e) {
-                            outputMp3.remove(mp3OutputBuffer);
+                            outputMp3.remove(outputMp3Stream);
                         }
                     }
                     if (this.recordingOutputStream != null)
@@ -486,7 +494,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
                         {
                             outputRawStream.write(rawInputBuffer);
                         } catch (Exception e) {
-                            outputRaw.remove(rawInputBuffer);
+                            outputRaw.remove(outputRawStream);
                         }
                     }
                 } else {

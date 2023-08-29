@@ -40,6 +40,7 @@ import javax.sound.sampled.AudioInputStream;
 public class MixerStreamHardware implements Runnable, MixerStream
 {
     private TargetDataLine targetLine;
+    private SourceDataLine sourceLine;
     private SourceDataLineOutputStream sourceDataLineOutputStream;
     private AudioFormat format;
     private Mixer.Info mixerInfo;
@@ -187,6 +188,14 @@ public class MixerStreamHardware implements Runnable, MixerStream
         }
     }
 
+    public void removeRawTargetStream(OutputStream os)
+    {
+        if (this.outputRaw.contains(os))
+        {
+            this.outputRaw.remove(os);
+        }
+    }
+
     @Override
     public int outputStreamCount()
     {
@@ -262,25 +271,25 @@ public class MixerStreamHardware implements Runnable, MixerStream
                 {
                     this.recordingOutputStream.close();
                 } catch (Exception e) {}
-                final long recordingDuration = this.silenceStartAt - this.recordingStart;
-                if (this.recordingFile != null)
-                {
-                    if (recordingDuration >= this.mixerSettings.optLong("minimumRecordDuration", 500))
-                    {
-                        this.listeners.forEach((l) -> l.onRecording(MixerStreamHardware.this, recordingDuration, this.recordingFile));
-                    } else {
-                        try
-                        {
-                            // delete small recording
-                            this.recordingFile.delete();
-                        } catch (Exception dr) {}
-                    }
-                    this.recordingFile = null;
-                }
-                this.recordingOutputStream = null;
-                this.recordingStart = 0;
-                this.listeners.forEach((l) -> l.onSilence(MixerStreamHardware.this));
             }
+            final long recordingDuration = this.silenceStartAt - this.recordingStart;
+            if (this.recordingFile != null)
+            {
+                if (recordingDuration >= this.mixerSettings.optLong("minimumRecordDuration", 500))
+                {
+                    this.listeners.forEach((l) -> l.onRecording(MixerStreamHardware.this, recordingDuration, this.recordingFile));
+                } else {
+                    try
+                    {
+                        // delete small recording
+                        this.recordingFile.delete();
+                    } catch (Exception dr) {}
+                }
+                this.recordingFile = null;
+            }
+            this.recordingOutputStream = null;
+            this.recordingStart = 0;
+            this.listeners.forEach((l) -> l.onSilence(MixerStreamHardware.this));
         });
         t.start();
     }
@@ -384,7 +393,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     {
                         outputMp3Stream.write(mp3OutputBuffer,0,bytesWritten);
                     } catch (Exception e) {
-                        outputMp3.remove(mp3OutputBuffer);
+                        outputMp3.remove(outputMp3Stream);
                     }
                 }
                 if (this.recordingOutputStream != null)
@@ -393,7 +402,6 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     {
                         this.recordingOutputStream.write(mp3OutputBuffer,0,bytesWritten);
                     } catch (Exception e) {
-                        this.recordingFile = null;
                         this.recordingOutputStream = null;
                     }
                 }
@@ -403,7 +411,8 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     {
                         outputRawStream.write(rawInputBuffer);
                     } catch (Exception e) {
-                        outputRaw.remove(rawInputBuffer);
+                        e.printStackTrace(System.err);
+                        outputRaw.remove(outputRawStream);
                     }
                 }
                 try
@@ -545,25 +554,40 @@ public class MixerStreamHardware implements Runnable, MixerStream
     @Override
     public OutputStream getOutputStream() 
     {
-        boolean createNewStream = false;
-        if (this.sourceDataLineOutputStream == null)
+        boolean rebuildSourceLine = false;
+        if (this.sourceLine == null)
         {
-            createNewStream = true;
+            rebuildSourceLine = true;
+        } else if (!this.sourceLine.isRunning()) {
+            rebuildSourceLine = true;
         }
-        if (createNewStream)
+
+        if (rebuildSourceLine)
         {
+            System.err.println("Rebuilding source line");
             try
             {
-                SourceDataLine sourceLine = AudioSystem.getSourceDataLine(this.format, this.mixerInfo);
+                this.sourceLine = AudioSystem.getSourceDataLine(this.format, this.mixerInfo);
                 sourceLine.open();
                 sourceLine.start();
                 FloatControl gainControl = (FloatControl) sourceLine.getControl(FloatControl.Type.MASTER_GAIN);
                 gainControl.setValue(1.0f);
-                this.sourceDataLineOutputStream = new SourceDataLineOutputStream(sourceLine);
             } catch (Exception e) {
                 e.printStackTrace(System.err);
+                this.sourceLine = null;
             }
         }
+
+        if (this.sourceLine != null)
+        {
+            if (this.sourceDataLineOutputStream == null)
+            {
+                this.sourceDataLineOutputStream = new SourceDataLineOutputStream(this.sourceLine);
+            } else if (!this.sourceDataLineOutputStream.isAlive()) {
+                this.sourceDataLineOutputStream = new SourceDataLineOutputStream(this.sourceLine);
+            }
+        }
+        
         return this.sourceDataLineOutputStream;
     }
 }

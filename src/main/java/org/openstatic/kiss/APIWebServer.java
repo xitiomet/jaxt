@@ -250,8 +250,21 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                         MixerStream destMixerStream = JavaKISSMain.soundSystem.getMixer(destDevId);
                         if (sourceMixerStream != null && destMixerStream != null)
                         {
-                            System.err.println("Monitoring " + sourceMixerStream.getMixerName() + " with " + destMixerStream.getMixerName());
+                            JavaKISSMain.mainLog("[MONITORING] " + sourceMixerStream.getMixerName() + " with " + destMixerStream.getMixerName());
                             sourceMixerStream.addRawTargetStream(destMixerStream.getOutputStream());
+                        }
+                    }
+                } else if (action.equals("unmonitoraudio")) {
+                    int sourceDevId = j.optInt("sourceDevId", -1);
+                    int destDevId = j.optInt("destDevId", -1);
+                    if (sourceDevId >= 0 && destDevId >= 0)
+                    {
+                        MixerStream sourceMixerStream = JavaKISSMain.soundSystem.getMixer(sourceDevId);
+                        MixerStream destMixerStream = JavaKISSMain.soundSystem.getMixer(destDevId);
+                        if (sourceMixerStream != null && destMixerStream != null)
+                        {
+                            JavaKISSMain.mainLog("[UN-MONITORING] " + sourceMixerStream.getMixerName() + " with " + destMixerStream.getMixerName());
+                            sourceMixerStream.removeRawTargetStream(destMixerStream.getOutputStream());
                         }
                     }
                 } else if (action.equals("startaudio")) {

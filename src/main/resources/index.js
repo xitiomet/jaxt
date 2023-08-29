@@ -203,7 +203,14 @@ var commands = {
           sendEvent({"action":"monitoraudio", "sourceDevId": parseInt(args[0]) , "destDevId": parseInt(args[1])});
           prompt(term);
         },
-        description: 'Monitor an audio device from another audio device (use lsaudio for dev#)',
+        description: 'Monitor an audio device from another audio device (use lsaudio for dev#)\r\nExample: monitor src# dest#',
+    },
+    unmonitor: {
+        f: (args) => {
+          sendEvent({"action":"unmonitoraudio", "sourceDevId": parseInt(args[0]) , "destDevId": parseInt(args[1])});
+          prompt(term);
+        },
+        description: 'UN-Monitor an audio device from another audio device (use lsaudio for dev#)\r\nExample: monitor src# dest#',
     },
     setaudio: {
         f: (args) => {
@@ -270,7 +277,7 @@ var commands = {
             listenClick(args[0]);
             prompt(term);
         },
-        description: 'Listen to an audio device on the system running jaxt\r\nExample: "listen 2" (use lsaudio to get device number)'
+        description: 'Listen to an audio device via the current web browser\r\nExample: "listen 2" (use lsaudio to get device number)'
     },
     mute: {
         f: (args) => {
@@ -752,7 +759,7 @@ function setupWebsocket()
                             }
                             if (stateObj.isAlive == true)
                             {
-                               term.write(" \x1B[0;92m(Monitored)\x1B[0m");
+                               term.write(" \x1B[0;92m(Active)\x1B[0m");
                             }
                             if (stateObj['settings']['autoRecord'] == true)
                             {

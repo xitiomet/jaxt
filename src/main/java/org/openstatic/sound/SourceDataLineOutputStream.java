@@ -20,13 +20,31 @@ public class SourceDataLineOutputStream extends OutputStream
         return this.sourceDataLine;
     }
 
+    public boolean isAlive()
+    {
+        if (this.sourceDataLine != null)
+        {
+            if (this.sourceDataLine.isRunning())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public void write(byte[] b, int off, int len) throws IOException
     {
         if (this.sourceDataLine != null)
         {
+            if (!this.sourceDataLine.isOpen())
+            {
+                throw new IOException("Cannot write, sourceDataLine is dead!");
+            }
             int written = this.sourceDataLine.write(b, off, len);
             //System.err.println("Wrote " + String.valueOf(written));
+        } else {
+            throw new IOException("Cannot write, no sourceDataLine!");
         }
     }
 
@@ -35,8 +53,14 @@ public class SourceDataLineOutputStream extends OutputStream
     {
         if (this.sourceDataLine != null)
         {
+            if (!this.sourceDataLine.isOpen())
+            {
+                throw new IOException("Cannot write, sourceDataLine is dead!");
+            }
             int written = this.sourceDataLine.write(b, 0, b.length);
             //System.err.println("Wrote " + String.valueOf(written));
+        } else {
+            throw new IOException("Cannot write, no sourceDataLine!");
         }
     }
 

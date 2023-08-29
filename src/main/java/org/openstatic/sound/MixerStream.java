@@ -6,12 +6,13 @@ import org.json.JSONObject;
 
 public interface MixerStream 
 {
-    public boolean isAlive();
-    public boolean canBeRecorded();
-    public boolean canPlayTo();
+    public boolean isAlive();            // Is the input alive?
+    public boolean canBeRecorded();      // Can this device be recorded? aka is it a source of audio
+    public boolean canPlayTo();          // Can this device be transmitted to or be used as a monitor
     public JSONObject getMixerSettings();
     public void addMP3TargetStream(OutputStream out);
     public void addRawTargetStream(OutputStream out);
+    public void removeRawTargetStream(OutputStream out);
     public void addMixerStreamListener(MixerStreamListener l);
     public void removeMixerStreamListener(MixerStreamListener l);
     public void play(byte[] clip);
