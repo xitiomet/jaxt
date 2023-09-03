@@ -288,6 +288,27 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                         setAudioPacket.put("timestamp", System.currentTimeMillis());
                         session.getRemote().sendStringByFuture(setAudioPacket.toString());
                     }
+                 } else if (action.equals("unsetaudio")) {
+                    int devId = j.optInt("devId", -1);
+                    if (devId >= 0)
+                    {
+                        MixerStream mixerStream  = JavaKISSMain.soundSystem.getMixer(devId);
+                        if (j.has("key"))
+                        {
+                            mixerStream.getMixerSettings().remove(j.optString("key"));
+                            if (mixerStream.isAlive())
+                            {
+                                mixerStream.restart();
+                            }
+                        }
+                        JSONObject setAudioPacket = new JSONObject();
+                        setAudioPacket.put("action", "unsetaudio");
+                        setAudioPacket.put("devId", devId);
+                        setAudioPacket.put("name", mixerStream.getMixerName());
+                        setAudioPacket.put("mixerSettings", mixerStream.getMixerSettings());
+                        setAudioPacket.put("timestamp", System.currentTimeMillis());
+                        session.getRemote().sendStringByFuture(setAudioPacket.toString());
+                    }
                 } else if (action.equals("info")) {
                     broadcastINFO(j.optString("text", ""));
                 }

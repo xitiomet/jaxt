@@ -471,29 +471,39 @@ public class MixerStreamHardware implements Runnable, MixerStream
     }
 
     @Override
-    public boolean canBeRecorded() {
-        
-        Line.Info[] targetLines = this.mixer.getTargetLineInfo();
-        int tlc = 0;
-        for (Line.Info li : targetLines)
+    public boolean canBeRecorded() 
+    {
+        if (!this.mixerSettings.has("canBeRecorded"))
         {
-            if (li.getLineClass().toString().equals("interface javax.sound.sampled.TargetDataLine"))
-                tlc++;
+            Line.Info[] targetLines = this.mixer.getTargetLineInfo();
+            int tlc = 0;
+            for (Line.Info li : targetLines)
+            {
+                if (li.getLineClass().toString().equals("interface javax.sound.sampled.TargetDataLine"))
+                    tlc++;
+            }
+            return tlc > 0;
+        } else {
+            return this.mixerSettings.optBoolean("canBeRecorded", false);
         }
-        return tlc > 0;
     }
 
     @Override
     public boolean canPlayTo() 
     {
-        Line.Info[] sourceLines = this.mixer.getSourceLineInfo();
-        int slc = 0;
-        for (Line.Info li : sourceLines)
+        if (!this.mixerSettings.has("canPlayTo"))
         {
-            if (li.getLineClass().toString().equals("interface javax.sound.sampled.SourceDataLine"))
-                slc++;
+            Line.Info[] sourceLines = this.mixer.getSourceLineInfo();
+            int slc = 0;
+            for (Line.Info li : sourceLines)
+            {
+                if (li.getLineClass().toString().equals("interface javax.sound.sampled.SourceDataLine"))
+                    slc++;
+            }
+            return slc > 0;
+        } else {
+            return this.mixerSettings.optBoolean("canPlayTo", false);
         }
-        return slc > 0;
     }
 
     @Override

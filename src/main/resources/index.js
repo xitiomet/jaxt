@@ -243,6 +243,18 @@ var commands = {
         },
         description: 'Change or retrieve settings for an audio device\r\n(use lsaudio for dev#)',
     },
+    unsetaudio: {
+        f: (args) => {
+          var event = {"action":"unsetaudio", "devId": parseInt(args[0])};
+          if (args.length >= 2)
+          {
+            var key = args[1];
+            event['key'] = key;
+          }
+          sendEvent(event);
+        },
+        description: 'unset a parameter for an audio device\r\n(use lsaudio for dev#)',
+    },
     source: {
       f: (args) => {
         if (args.length > 0)
@@ -775,6 +787,20 @@ function setupWebsocket()
                     }
                     prompt(term);
                 } else if (action == 'setaudio') {
+                    var a = 0;
+                    term.writeln("-- " + jsonObject.devId + ": " + jsonObject.name + " --");
+                    for(let key in jsonObject.mixerSettings)
+                    {
+                        let value = jsonObject.mixerSettings[key];
+                        if (value instanceof Object)
+                        {
+                            term.writeln(key + ": " + JSON.stringify(value));
+                        } else {
+                            term.writeln(key + ": " + value);
+                        }
+                    }
+                    prompt(term);
+                } else if (action == 'unsetaudio') {
                     var a = 0;
                     term.writeln("-- " + jsonObject.devId + ": " + jsonObject.name + " --");
                     for(let key in jsonObject.mixerSettings)
