@@ -745,9 +745,9 @@ function setupWebsocket()
                     term.writeln("-- Sound Devices --");
                     for(devname of jsonObject.devices)
                     {
-                        term.write(a + ": " + devname);
                         if (jsonObject.state.hasOwnProperty(devname))
                         {
+                            term.write(a + ": " + devname);
                             var stateObj = jsonObject.state[devname];
                             if (stateObj.canBeRecorded == true && stateObj.canPlayTo == true)
                             {
@@ -765,9 +765,13 @@ function setupWebsocket()
                             {
                                 term.write(" \x1B[0;91m(A-REC)\x1B[0m");
                             }
+                            term.writeln("");
+                            for(tarname of stateObj.targets)
+                            {
+                                term.writeln(" -> " + jsonObject.devices.indexOf(tarname) + ": " + tarname);
+                            }
+                            a++;
                         }
-                        term.writeln("");
-                        a++;
                     }
                     prompt(term);
                 } else if (action == 'setaudio') {
@@ -844,6 +848,18 @@ function logIt(message, color = '#BBBBBB')
     window.scrollTo(0,document.body.scrollHeight);
 }
 
+String.prototype.hashCode = function() {
+    var hash = 0,
+      i, chr;
+    if (this.length === 0) return hash;
+    for (i = 0; i < this.length; i++) {
+      chr = this.charCodeAt(i);
+      hash = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+  }
+
 function logInfo(jsonObject, color = '#BBBBBB')
 {
     var message = jsonObject.text;
@@ -851,7 +867,7 @@ function logInfo(jsonObject, color = '#BBBBBB')
     var d = new Date();
     if (jsonObject.hasOwnProperty('timestamp'))
         d = new Date(jsonObject.timestamp);
-    var preId = "info_" + d.getTime();
+    var preId = "info_" + d.getTime() + message.hashCode();
     if (document.getElementById(preId) == undefined)
     {
         var msgSplit = message.split(/\r?\n/);

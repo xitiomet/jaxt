@@ -6,7 +6,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 
 import javax.servlet.AsyncContext;
 import javax.servlet.http.HttpServletRequest;
@@ -156,7 +155,11 @@ public class SoundSystem
             stateObject.put("isAlive", mixer.isAlive());
             stateObject.put("canBeRecorded", mixer.canBeRecorded());
             stateObject.put("canPlayTo", mixer.canPlayTo());
-            stateObject.put("outputStreamCount", mixer.outputStreamCount());
+            JSONArray targetsArray = new JSONArray();
+            mixer.getTargetMixerStreams().forEach((ms) -> {
+                targetsArray.put(ms.getMixerName());
+            });
+            stateObject.put("targets", targetsArray);
             ro.put(mixer.getMixerName(), stateObject);
         }
         return ro;

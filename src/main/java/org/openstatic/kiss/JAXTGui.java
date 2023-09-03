@@ -1,10 +1,6 @@
 package org.openstatic.kiss;
 
 import javax.swing.JPopupMenu;
-import java.awt.Menu;
-import java.awt.MenuItem;
-import java.awt.PopupMenu;
-import java.awt.Toolkit;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.SystemTray;
@@ -19,8 +15,6 @@ import java.net.URI;
 import javax.imageio.ImageIO;
 import javax.swing.JMenuItem;
 import javax.swing.ImageIcon;
-import javax.swing.JMenu;
-import javax.swing.JPopupMenu;
 
 public class JAXTGui implements ActionListener
 {

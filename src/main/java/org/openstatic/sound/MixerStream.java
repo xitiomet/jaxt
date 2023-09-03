@@ -1,6 +1,7 @@
 package org.openstatic.sound;
 
 import java.io.OutputStream;
+import java.util.Collection;
 
 import org.json.JSONObject;
 
@@ -11,13 +12,19 @@ public interface MixerStream
     public boolean canPlayTo();          // Can this device be transmitted to or be used as a monitor
     public JSONObject getMixerSettings();
     public void addMP3TargetStream(OutputStream out);
+
+    public void addTargetMixerStream(MixerStream ms);
+    public void removeTargetMixerStream(MixerStream ms);
+    public Collection<MixerStream> getTargetMixerStreams();
+
     public void addRawTargetStream(OutputStream out);
     public void removeRawTargetStream(OutputStream out);
+    
     public void addMixerStreamListener(MixerStreamListener l);
     public void removeMixerStreamListener(MixerStreamListener l);
+
     public void play(byte[] clip);
     public OutputStream getOutputStream();
-    public int outputStreamCount();
     public int getNumChannels();
     public float getSampleRate();
     public String getMixerName();

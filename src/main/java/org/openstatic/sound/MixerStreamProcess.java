@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Set;
@@ -37,8 +38,10 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private ProcessBuilder playExecuteProcessBuilder;
     private ProcessBuilder stopExecuteProcessBuilder;
     private Process process;
+    private Process playbackProcess;
     private ArrayList<OutputStream> outputMp3;
     private ArrayList<OutputStream> outputRaw;
+    private ArrayList<MixerStream> outputMixerStreams;
     private Thread myThread;
     private ArrayList<MixerStreamListener> listeners;
     private double rms;
@@ -51,6 +54,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private FileOutputStream recordingOutputStream;
     private long recordingStart;
     private OutputStream processOutputStream;
+    private OutputStream playbackExecOutputStream;
     private InputStream processInputStream;
     private AudioFormat format;
     private String execString;
@@ -70,6 +74,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
         this.longSilence = true;
         this.outputMp3 = new ArrayList<OutputStream>();
         this.outputRaw = new ArrayList<OutputStream>();
+        this.outputMixerStreams = new ArrayList<MixerStream>();
         this.listeners = new ArrayList<MixerStreamListener>();
         
         rebuild();
@@ -278,9 +283,27 @@ public class MixerStreamProcess implements Runnable, MixerStream
     }
 
     @Override
-    public int outputStreamCount()
+    public void addTargetMixerStream(MixerStream ms) 
     {
-        return this.outputMp3.size() + this.outputRaw.size();
+        if (!this.outputMixerStreams.contains(ms))
+        {
+            this.outputMixerStreams.add(ms);
+        }
+    }
+
+    @Override
+    public void removeTargetMixerStream(MixerStream ms)
+    {
+        if (this.outputMixerStreams.contains(ms))
+        {
+            this.outputMixerStreams.remove(ms);
+        }
+    }
+
+    @Override
+    public Collection<MixerStream> getTargetMixerStreams()
+    {
+        return this.outputMixerStreams;
     }
 
     public boolean isAlive()
@@ -344,6 +367,9 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     private void fireLongSilence()
     {
+        this.outputMixerStreams.forEach((ms) -> {
+            ms.setPTT(false);
+        });
         Thread t = new Thread(() -> {
             JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
             if (this.recordingOutputStream != null)
@@ -374,6 +400,9 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     private void fireSilenceBroken()
     {
+        this.outputMixerStreams.forEach((ms) -> {
+            ms.setPTT(true);
+        });
         Thread t = new Thread(() -> {
             if (mixerSettings.optBoolean("autoRecord", false) && JavaKISSMain.logsFolder != null)
             {
@@ -395,6 +424,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
             this.listeners.forEach((l) -> l.onAudioInput(MixerStreamProcess.this));
         });
         t.start();
+        
     }
 
     private void fireDTMF(final char dtmf)
@@ -459,7 +489,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
             while(this.process.isAlive()) 
             {
-                if (audioInputStream.available() > 0)
+                if (audioInputStream.available() > 128)
                 {
                     bytesRead = audioInputStream.read(rawInputBuffer);
                     this.rms = calcRMS(rawInputBuffer, bytesRead);
@@ -495,6 +525,19 @@ public class MixerStreamProcess implements Runnable, MixerStream
                             outputRawStream.write(rawInputBuffer);
                         } catch (Exception e) {
                             outputRaw.remove(outputRawStream);
+                        }
+                    }
+                    if (!this.longSilence)
+                    {
+                        for (MixerStream outputMixerStream : (ArrayList<MixerStream>) this.outputMixerStreams.clone()) 
+                        {
+                            try
+                            {
+                                outputMixerStream.getOutputStream().write(rawInputBuffer);
+                            } catch (Exception e) {
+                                e.printStackTrace(System.err);
+                                outputMixerStreams.remove(outputMixerStream);
+                            }
                         }
                     }
                 } else {
@@ -574,6 +617,45 @@ public class MixerStreamProcess implements Runnable, MixerStream
     @Override
     public void setPTT(boolean v)
     {
+        if (v)
+        {
+            JavaKISSMain.mainLog("[PTT PRESSED] " + this.getMixerName());
+            if (this.playExecuteProcessBuilder != null && this.playbackProcess == null && this.playbackExecOutputStream == null)
+            {
+                try
+                {
+                    JavaKISSMain.mainLog("[PLAYBACK EXECUTE] " + this.getMixerName() + " (" + this.playExecString + ")");
+                    this.playbackProcess = this.playExecuteProcessBuilder.start();
+                    this.playbackExecOutputStream = this.playbackProcess.getOutputStream();
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }      
+            }
+        } else {
+            JavaKISSMain.mainLog("[PTT RELEASED] " + this.getMixerName());
+            if (this.playbackExecOutputStream != null)
+            {
+                try
+                {
+                    this.playbackExecOutputStream.flush();
+                    this.playbackExecOutputStream.close();
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }
+                this.playbackExecOutputStream = null;
+            }
+            if (this.playbackProcess != null)
+            {
+                try
+                {
+                    this.playbackProcess.waitFor();
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }
+                JavaKISSMain.mainLog("[PLAYBACK EXECUTE TERMINATED] " + this.getMixerName() + " (" + this.playExecString + ")");
+                this.playbackProcess = null;
+            }
+        }
         if (this.mixerSettings.has("ptt"))
         {
             JSONObject pttObject = this.mixerSettings.optJSONObject("ptt");
@@ -611,16 +693,9 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     // create AIS in the target format
                     AudioInputStream ais = AudioSystem.getAudioInputStream(this.format, fAIS);
                     this.setPTT(true);
-                    if (this.playExecuteProcessBuilder != null)
+                    if (this.playbackExecOutputStream != null)
                     {
-                        JavaKISSMain.mainLog("[PLAYBACK EXECUTE] " + this.getMixerName() + " (" + this.playExecString + ")");
-                        Process playExecProc = this.playExecuteProcessBuilder.start();
-                        OutputStream pepOutputStream = playExecProc.getOutputStream();
-                        ais.transferTo(pepOutputStream);
-                        pepOutputStream.flush();
-                        pepOutputStream.close();
-                        playExecProc.waitFor();
-                        JavaKISSMain.mainLog("[PLAYBACK EXECUTE TERMINATED] " + this.getMixerName() + " (" + this.playExecString + ")");
+                        ais.transferTo(this.playbackExecOutputStream);
                     } else {
                         ais.transferTo(this.processOutputStream);
                     }
@@ -638,16 +713,9 @@ public class MixerStreamProcess implements Runnable, MixerStream
     @Override
     public OutputStream getOutputStream() 
     {
-        if (this.playExecuteProcessBuilder != null)
+        if (this.playbackExecOutputStream != null)
         {
-            try
-            {
-                Process playExecProc = this.playExecuteProcessBuilder.start();
-                OutputStream pepOutputStream = playExecProc.getOutputStream();
-                return pepOutputStream;
-            } catch (Exception e) {
-                return null;
-            }      
+            return this.playbackExecOutputStream;   
         } else {
             return this.processOutputStream;
         }

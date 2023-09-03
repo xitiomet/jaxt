@@ -27,16 +27,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.Arrays;
 
-import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.sound.sampled.spi.AudioFileReader;
 
 import org.eclipse.jetty.server.Server;
 
@@ -49,7 +46,6 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.util.ajax.JSON;
 
 public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamListener
 {
@@ -251,7 +247,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                         if (sourceMixerStream != null && destMixerStream != null)
                         {
                             JavaKISSMain.mainLog("[MONITORING] " + sourceMixerStream.getMixerName() + " with " + destMixerStream.getMixerName());
-                            sourceMixerStream.addRawTargetStream(destMixerStream.getOutputStream());
+                            sourceMixerStream.addTargetMixerStream(destMixerStream);
                         }
                     }
                 } else if (action.equals("unmonitoraudio")) {
@@ -264,7 +260,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                         if (sourceMixerStream != null && destMixerStream != null)
                         {
                             JavaKISSMain.mainLog("[UN-MONITORING] " + sourceMixerStream.getMixerName() + " with " + destMixerStream.getMixerName());
-                            sourceMixerStream.removeRawTargetStream(destMixerStream.getOutputStream());
+                            sourceMixerStream.removeTargetMixerStream(destMixerStream);
                         }
                     }
                 } else if (action.equals("startaudio")) {

@@ -1,13 +1,10 @@
 package org.openstatic.serial;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.openstatic.kiss.JavaKISSMain;
-import org.openstatic.sound.MixerStream;
 
 import com.fazecast.jSerialComm.*;
 
@@ -41,14 +38,14 @@ public class SerialSystem
             if (value)
             {
                 port.setRTS();
-                JavaKISSMain.mainLog("[PTT RTS PRESSED] " + serialPort);
+                JavaKISSMain.mainLog("[RTS SET] " + serialPort);
             } else {
                 port.clearRTS();
                 port.closePort();
-                JavaKISSMain.mainLog("[PTT RTS RELEASED] " + serialPort);
+                JavaKISSMain.mainLog("[RTS CLEARED] " + serialPort);
             }
         } else {
-            JavaKISSMain.mainLog("[PTT ERROR] Couldnt Find " + serialPort);
+            JavaKISSMain.mainLog("[RTS ERROR] Couldnt Find " + serialPort);
         }
     }
 
@@ -62,14 +59,14 @@ public class SerialSystem
             if (value)
             {
                 port.setDTR();
-                JavaKISSMain.mainLog("[PTT DTR PRESSED] " + serialPort);
+                JavaKISSMain.mainLog("[DTR SET] " + serialPort);
             } else {
                 port.clearDTR();
                 port.closePort();
-                JavaKISSMain.mainLog("[PTT DTR RELEASED] " + serialPort);
+                JavaKISSMain.mainLog("[DTR CLEARED] " + serialPort);
             }
         } else {
-            JavaKISSMain.mainLog("[PTT ERROR] Couldnt Find " + serialPort);
+            JavaKISSMain.mainLog("[DTR ERROR] Couldnt Find " + serialPort);
         }
     }
 

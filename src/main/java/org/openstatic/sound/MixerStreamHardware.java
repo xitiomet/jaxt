@@ -10,24 +10,19 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
-import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.Line;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.TargetDataLine;
 
 import org.json.JSONObject;
-import org.openstatic.kiss.APIWebServer;
 import org.openstatic.kiss.JavaKISSMain;
 import org.openstatic.sound.dtmf.DTMFUtil;
 
@@ -47,7 +42,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
     private Mixer mixer;
     private ArrayList<OutputStream> outputMp3;
     private ArrayList<OutputStream> outputRaw;
-    private HashMap<MixerStream, SourceDataLine> monitoring;
+    private ArrayList<MixerStream> outputMixerStreams;
     private Thread myThread;
     private ArrayList<MixerStreamListener> listeners;
     private double rms;
@@ -66,7 +61,6 @@ public class MixerStreamHardware implements Runnable, MixerStream
     public MixerStreamHardware(Mixer.Info mixerInfo, JSONObject mixerSettings)
     {
         this.mixerSettings = mixerSettings;
-        this.monitoring = new HashMap<MixerStream, SourceDataLine>();
         this.format = new AudioFormat(
             mixerSettings.optFloat("sampleRate", 44100),  // Sample Rate
             mixerSettings.optInt("sampleSizeInBits", 16),     // Size of SampleBits
@@ -79,6 +73,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
         this.longSilence = true;
         this.outputMp3 = new ArrayList<OutputStream>();
         this.outputRaw = new ArrayList<OutputStream>();
+        this.outputMixerStreams = new ArrayList<MixerStream>();
         this.listeners = new ArrayList<MixerStreamListener>();
         this.mixerInfo = mixerInfo;
         this.mixer = AudioSystem.getMixer(mixerInfo);
@@ -197,9 +192,27 @@ public class MixerStreamHardware implements Runnable, MixerStream
     }
 
     @Override
-    public int outputStreamCount()
+    public void addTargetMixerStream(MixerStream ms) 
     {
-        return this.outputMp3.size() + this.outputRaw.size();
+        if (!this.outputMixerStreams.contains(ms))
+        {
+            this.outputMixerStreams.add(ms);
+        }
+    }
+
+    @Override
+    public void removeTargetMixerStream(MixerStream ms)
+    {
+        if (this.outputMixerStreams.contains(ms))
+        {
+            this.outputMixerStreams.remove(ms);
+        }
+    }
+
+    @Override
+    public Collection<MixerStream> getTargetMixerStreams()
+    {
+        return this.outputMixerStreams;
     }
 
     public boolean isAlive()
@@ -263,6 +276,9 @@ public class MixerStreamHardware implements Runnable, MixerStream
 
     private void fireLongSilence()
     {
+        this.outputMixerStreams.forEach((ms) -> {
+            ms.setPTT(false);
+        });
         Thread t = new Thread(() -> {
             JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
             if (this.recordingOutputStream != null)
@@ -296,6 +312,9 @@ public class MixerStreamHardware implements Runnable, MixerStream
 
     private void fireSilenceBroken()
     {
+        this.outputMixerStreams.forEach((ms) -> {
+            ms.setPTT(true);
+        });
         Thread t = new Thread(() -> {
             if (mixerSettings.optBoolean("autoRecord", false) && JavaKISSMain.logsFolder != null)
             {
@@ -415,6 +434,19 @@ public class MixerStreamHardware implements Runnable, MixerStream
                         outputRaw.remove(outputRawStream);
                     }
                 }
+                if (!this.longSilence)
+                {
+                    for (MixerStream outputMixerStream : (ArrayList<MixerStream>) this.outputMixerStreams.clone()) 
+                    {
+                        try
+                        {
+                            outputMixerStream.getOutputStream().write(rawInputBuffer);
+                        } catch (Exception e) {
+                            e.printStackTrace(System.err);
+                            outputMixerStreams.remove(outputMixerStream);
+                        }
+                    }
+                }
                 try
                 {
                     Thread.sleep(10);
@@ -484,6 +516,12 @@ public class MixerStreamHardware implements Runnable, MixerStream
     @Override
     public void setPTT(boolean v)
     {
+        if (v)
+        {
+            JavaKISSMain.mainLog("[PTT PRESSED] " + this.getMixerName());
+        } else {
+            JavaKISSMain.mainLog("[PTT RELEASED] " + this.getMixerName());
+        }
         if (this.mixerSettings.has("ptt"))
         {
             JSONObject pttObject = this.mixerSettings.optJSONObject("ptt");
@@ -526,13 +564,13 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     AudioInputStream fAIS = new AudioInputStream(bais, aff, AudioSystem.NOT_SPECIFIED);
                     // create AIS in the target format
                     AudioInputStream ais = AudioSystem.getAudioInputStream(this.format, fAIS);
-
+                    
+                    this.setPTT(true);
+                    /*
                     Clip clip = (Clip) AudioSystem.getClip(this.mixerInfo);
                     clip.open(ais);
                     FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
                     gainControl.setValue(1.0f);
-                    this.setPTT(true);
-
                     clip.start();
                     Thread.sleep(1000);
                     while(clip.isActive())
@@ -541,6 +579,11 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     }
                     clip.flush();
                     clip.close();
+                    */
+
+                    ais.transferTo(this.getOutputStream());
+                    ais.close();
+
                     JavaKISSMain.mainLog("[PLAYBACK ENDED] " + this.getMixerName());
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
