@@ -367,11 +367,11 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     private void fireLongSilence()
     {
+        JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
         this.outputMixerStreams.forEach((ms) -> {
             ms.setPTT(false);
         });
         Thread t = new Thread(() -> {
-            JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
             if (this.recordingOutputStream != null)
             {
                 try
@@ -400,6 +400,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
 
     private void fireSilenceBroken()
     {
+        JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
         this.outputMixerStreams.forEach((ms) -> {
             ms.setPTT(true);
         });
@@ -412,14 +413,11 @@ public class MixerStreamProcess implements Runnable, MixerStream
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HHmmss");
                 String mp3Name = simpleDateFormat.format(new Date(System.currentTimeMillis())) + ".mp3";
                 this.recordingFile = new File(mixerFolder, mp3Name);
-                JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName() + " - RECORDING");
                 try
                 {
                     this.recordingOutputStream = new FileOutputStream(this.recordingFile);
                     this.recordingStart = System.currentTimeMillis();
                 } catch (Exception e) {}
-            } else {
-                JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
             }
             this.listeners.forEach((l) -> l.onAudioInput(MixerStreamProcess.this));
         });
