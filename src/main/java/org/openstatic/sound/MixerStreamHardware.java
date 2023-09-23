@@ -57,6 +57,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
     private char lastDTMF;
     private String dtmfSequence;
     private long lastDTMFToneAt;
+    private boolean ptt;
 
     public MixerStreamHardware(Mixer.Info mixerInfo, JSONObject mixerSettings)
     {
@@ -70,6 +71,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
         );
         this.silenceStartAt = System.currentTimeMillis();
         this.silence = true;
+        this.ptt = false;
         this.longSilence = true;
         this.outputMp3 = new ArrayList<OutputStream>();
         this.outputRaw = new ArrayList<OutputStream>();
@@ -398,50 +400,54 @@ public class MixerStreamHardware implements Runnable, MixerStream
             while(0 < (bytesRead = audioInputStream.read(rawInputBuffer))) 
             {
                 this.rms = calcRMS(rawInputBuffer, bytesRead);
+                if (this.ptt) this.rms = 0.0f;
                 this.rmsEvents();
-                if (mixerSettings.optBoolean("dtmf", false))
+                if (!this.ptt)
                 {
-                    this.dtmfEvents(rawInputBuffer);
-                }
-                bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
-                for (OutputStream outputMp3Stream : (ArrayList<OutputStream>) this.outputMp3.clone()) 
-                {
-                    try
+                    if (mixerSettings.optBoolean("dtmf", false))
                     {
-                        outputMp3Stream.write(mp3OutputBuffer,0,bytesWritten);
-                    } catch (Exception e) {
-                        outputMp3.remove(outputMp3Stream);
+                        this.dtmfEvents(rawInputBuffer);
                     }
-                }
-                if (this.recordingOutputStream != null)
-                {
-                    try
-                    {
-                        this.recordingOutputStream.write(mp3OutputBuffer,0,bytesWritten);
-                    } catch (Exception e) {
-                        this.recordingOutputStream = null;
-                    }
-                }
-                for (OutputStream outputRawStream : (ArrayList<OutputStream>) this.outputRaw.clone()) 
-                {
-                    try
-                    {
-                        outputRawStream.write(rawInputBuffer);
-                    } catch (Exception e) {
-                        e.printStackTrace(System.err);
-                        outputRaw.remove(outputRawStream);
-                    }
-                }
-                if (!this.longSilence)
-                {
-                    for (MixerStream outputMixerStream : (ArrayList<MixerStream>) this.outputMixerStreams.clone()) 
+                    bytesWritten = encoder.encodeBuffer(rawInputBuffer, 0, bytesRead, mp3OutputBuffer);
+                    for (OutputStream outputMp3Stream : (ArrayList<OutputStream>) this.outputMp3.clone()) 
                     {
                         try
                         {
-                            outputMixerStream.getOutputStream().write(rawInputBuffer);
+                            outputMp3Stream.write(mp3OutputBuffer,0,bytesWritten);
+                        } catch (Exception e) {
+                            outputMp3.remove(outputMp3Stream);
+                        }
+                    }
+                    if (this.recordingOutputStream != null)
+                    {
+                        try
+                        {
+                            this.recordingOutputStream.write(mp3OutputBuffer,0,bytesWritten);
+                        } catch (Exception e) {
+                            this.recordingOutputStream = null;
+                        }
+                    }
+                    for (OutputStream outputRawStream : (ArrayList<OutputStream>) this.outputRaw.clone()) 
+                    {
+                        try
+                        {
+                            outputRawStream.write(rawInputBuffer);
                         } catch (Exception e) {
                             e.printStackTrace(System.err);
-                            outputMixerStreams.remove(outputMixerStream);
+                            outputRaw.remove(outputRawStream);
+                        }
+                    }
+                    if (!this.longSilence)
+                    {
+                        for (MixerStream outputMixerStream : (ArrayList<MixerStream>) this.outputMixerStreams.clone()) 
+                        {
+                            try
+                            {
+                                outputMixerStream.getOutputStream().write(rawInputBuffer);
+                            } catch (Exception e) {
+                                e.printStackTrace(System.err);
+                                outputMixerStreams.remove(outputMixerStream);
+                            }
                         }
                     }
                 }
@@ -524,6 +530,7 @@ public class MixerStreamHardware implements Runnable, MixerStream
     @Override
     public void setPTT(boolean v)
     {
+        this.ptt = v;
         if (v)
         {
             JavaKISSMain.mainLog("[PTT PRESSED] " + this.getMixerName());
