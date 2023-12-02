@@ -278,7 +278,8 @@ public class MixerStreamHardware implements Runnable, MixerStream
 
     private void fireLongSilence()
     {
-        JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
+        if (mixerSettings.optBoolean("logAudio", true))
+            JavaKISSMain.mainLog("[RADIO SILENCE] " + this.getMixerName());
         this.outputMixerStreams.forEach((ms) -> {
             ms.setPTT(false);
         });
@@ -314,7 +315,8 @@ public class MixerStreamHardware implements Runnable, MixerStream
 
     private void fireSilenceBroken()
     {
-        JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
+        if (mixerSettings.optBoolean("logAudio", true))
+            JavaKISSMain.mainLog("[INCOMING AUDIO] " + this.getMixerName());
         this.outputMixerStreams.forEach((ms) -> {
             ms.setPTT(true);
         });
