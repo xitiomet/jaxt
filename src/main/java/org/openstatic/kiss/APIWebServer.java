@@ -722,7 +722,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                             aprsJSON.put("comment", aprsData.getComment());
                             aprsJSON.put("type", aprs.getType());
                             aprsJSON.put("action", "APRS");
-
+                            aprsJSON.put("timestamp", System.currentTimeMillis());
                             if (aprsData instanceof PositionPacket)
                             {
                                 PositionPacket posData = ((PositionPacket)aprsData);
