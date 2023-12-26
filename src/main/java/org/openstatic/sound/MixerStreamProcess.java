@@ -411,11 +411,17 @@ public class MixerStreamProcess implements Runnable, MixerStream
         Thread t = new Thread(() -> {
             if (mixerSettings.optBoolean("autoRecord", false) && JavaKISSMain.logsFolder != null)
             {
+                Date nowDate = new Date(System.currentTimeMillis());
                 File mixerFolder = new File(JavaKISSMain.logsFolder, this.getMixerName());
                 if (!mixerFolder.exists())
                     mixerFolder.mkdir();
+                SimpleDateFormat simpleDateStringFormat = new SimpleDateFormat("yyyy-MM-dd");
+                String dateString = simpleDateStringFormat.format(nowDate);
+                File dateFolder = new File(mixerFolder, dateString);
+                if (!dateFolder.exists())
+                    dateFolder.mkdir();
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HHmmss");
-                String mp3Name = simpleDateFormat.format(new Date(System.currentTimeMillis())) + ".mp3";
+                String mp3Name = (mixerSettings.has("frequency") ? mixerSettings.optString("frequency") + " - " : "") + simpleDateFormat.format(nowDate) + ".mp3";
                 this.recordingFile = new File(mixerFolder, mp3Name);
                 try
                 {
