@@ -422,7 +422,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     dateFolder.mkdir();
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HHmmss");
                 String mp3Name = (mixerSettings.has("frequency") ? mixerSettings.optString("frequency") + " - " : "") + simpleDateFormat.format(nowDate) + ".mp3";
-                this.recordingFile = new File(mixerFolder, mp3Name);
+                this.recordingFile = new File(dateFolder, mp3Name);
                 try
                 {
                     this.recordingOutputStream = new FileOutputStream(this.recordingFile);

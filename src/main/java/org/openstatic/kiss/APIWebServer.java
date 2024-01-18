@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.Arrays;
 
@@ -847,7 +848,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
         recordingEvent.put("name", recordingFile.getName());
         recordingEvent.put("timestamp", System.currentTimeMillis());
         recordingEvent.put("duration",recordingDuration);
-        recordingEvent.put("uri", "jaxt/api/logs/" + mixerStream.getMixerName() + "/" + recordingFile.getName());
+        recordingEvent.put("uri", "jaxt/api/logs/" + recordingFile.getAbsolutePath().replaceAll(Pattern.quote(JavaKISSMain.logsFolder.getAbsolutePath()), ""));
         JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
         JavaKISSMain.apiWebServer.addHistory(recordingEvent);
     }

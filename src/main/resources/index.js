@@ -972,7 +972,7 @@ function logAPRS(jsonObject)
     var divId = jsonObject.source + "_" + jsonObject.type + "_" + d.getTime();
     if (document.getElementById(divId) == undefined)
     {
-        var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": " + jsonObject.source;
+        var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": <a target=\"_blank\" href=\"https://www.qrz.com/db/" + jsonObject.source + "\">" + jsonObject.source + "</a>";
         
         if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
         {
