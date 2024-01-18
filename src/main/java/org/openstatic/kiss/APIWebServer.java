@@ -118,6 +118,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     public void addHistory(JSONObject obj)
     {
         this.packetHistory.add(obj);
+        JavaKISSMain.jsonLogAppend("api.json", obj);
         if (this.packetHistory.size() > 1000)
             this.packetHistory.remove(0);
     }
