@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
@@ -37,6 +38,8 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private ProcessBuilder processBuilder;
     private ProcessBuilder playExecuteProcessBuilder;
     private ProcessBuilder stopExecuteProcessBuilder;
+    private ProcessBuilder startExecuteProcessBuilder;
+    private ProcessBuilder pttExecuteProcessBuilder;
     private Process process;
     private Process playbackProcess;
     private ArrayList<OutputStream> outputMp3;
@@ -60,6 +63,8 @@ public class MixerStreamProcess implements Runnable, MixerStream
     private String execString;
     private String playExecString;
     private String stopExecString;
+    private String startExecString;
+    private String pttExecString;
     private DTMFUtil dtmfUtil;
     private char lastDTMF;
     private String dtmfSequence;
@@ -86,6 +91,28 @@ public class MixerStreamProcess implements Runnable, MixerStream
     public float getSampleRate()
     {
         return this.format.getSampleRate();
+    }
+
+    public String frequencyLong(String frequency)
+    {
+        if (frequency.endsWith("M"))
+        {
+            BigDecimal v = new BigDecimal(frequency.substring(0, frequency.length() - 1));
+            BigDecimal million = new BigDecimal("1000000");
+            String rv = v.multiply(million).toPlainString();
+            if (rv.endsWith(".00"))
+            rv = rv.substring(0, rv.length() - 3);
+            return rv;
+        } else if (frequency.endsWith("K")) {
+            BigDecimal v = new BigDecimal(frequency.substring(0, frequency.length() - 1));
+            BigDecimal thousand = new BigDecimal("1000");
+            String rv = v.multiply(thousand).toPlainString();
+            if (rv.endsWith(".00"))
+                rv = rv.substring(0, rv.length() - 3);
+            return rv;
+        } else {
+            return frequency;
+        }
     }
 
     @Override
@@ -119,6 +146,9 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     String key = keyIterator.next();
                     cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
                 }
+                if (mixerSettings.has("frequency"))
+                    cs = cs.replaceAll(Pattern.quote("{{frequency.long}}"), frequencyLong(mixerSettings.get("frequency").toString()));
+
                 commandArray.add(cs);
             }
             this.execString = commandArray.stream().collect(Collectors.joining(" "));
@@ -138,10 +168,15 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     String key = keyIterator.next();
                     cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
                 }
+                if (mixerSettings.has("frequency"))
+                    cs = cs.replaceAll(Pattern.quote("{{frequency.long}}"), frequencyLong(mixerSettings.get("frequency").toString()));
                 commandArray.add(cs);
             }
             this.playExecString = commandArray.stream().collect(Collectors.joining(" "));
             this.playExecuteProcessBuilder = new ProcessBuilder(commandArray);
+        } else {
+            this.playExecuteProcessBuilder = null;
+            this.playExecString = null;
         }
 
         if (this.mixerSettings.has("stopExecute"))
@@ -157,10 +192,63 @@ public class MixerStreamProcess implements Runnable, MixerStream
                     String key = keyIterator.next();
                     cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
                 }
+                if (mixerSettings.has("frequency"))
+                    cs = cs.replaceAll(Pattern.quote("{{frequency.long}}"), frequencyLong(mixerSettings.get("frequency").toString()));
                 commandArray.add(cs);
             }
             this.stopExecString = commandArray.stream().collect(Collectors.joining(" "));
             this.stopExecuteProcessBuilder = new ProcessBuilder(commandArray);
+        } else {
+            this.stopExecuteProcessBuilder = null;
+            this.stopExecString = null;
+        }
+
+        if (this.mixerSettings.has("startExecute"))
+        {
+            JSONArray command = mixerSettings.optJSONArray("startExecute");
+            final ArrayList<String> commandArray = new ArrayList<String>();
+            for(int i = 0; i < command.length(); i++)
+            {
+                String cs = command.getString(i);
+                Set<String> keySet = mixerSettings.keySet();
+                for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+                {
+                    String key = keyIterator.next();
+                    cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
+                }
+                if (mixerSettings.has("frequency"))
+                    cs = cs.replaceAll(Pattern.quote("{{frequency.long}}"), frequencyLong(mixerSettings.get("frequency").toString()));
+                commandArray.add(cs);
+            }
+            this.startExecString = commandArray.stream().collect(Collectors.joining(" "));
+            this.startExecuteProcessBuilder = new ProcessBuilder(commandArray);
+        } else {
+            this.startExecuteProcessBuilder = null;
+            this.startExecString = null;
+        }
+
+        if (this.mixerSettings.has("pttExecute"))
+        {
+            JSONArray command = mixerSettings.optJSONArray("pttExecute");
+            final ArrayList<String> commandArray = new ArrayList<String>();
+            for(int i = 0; i < command.length(); i++)
+            {
+                String cs = command.getString(i);
+                Set<String> keySet = mixerSettings.keySet();
+                for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+                {
+                    String key = keyIterator.next();
+                    cs = cs.replaceAll(Pattern.quote("{{" + key + "}}"), mixerSettings.get(key).toString());
+                }
+                if (mixerSettings.has("frequency"))
+                    cs = cs.replaceAll(Pattern.quote("{{frequency.long}}"), frequencyLong(mixerSettings.get("frequency").toString()));
+                commandArray.add(cs);
+            }
+            this.pttExecString = commandArray.stream().collect(Collectors.joining(" "));
+            this.pttExecuteProcessBuilder = new ProcessBuilder(commandArray);
+        } else {
+            this.pttExecuteProcessBuilder = null;
+            this.pttExecString = null;
         }
     }
 
@@ -170,6 +258,18 @@ public class MixerStreamProcess implements Runnable, MixerStream
         if (!this.isAlive())
         {
             this.rebuild();
+            if (this.startExecuteProcessBuilder != null)
+            {
+                try
+                {
+                    JavaKISSMain.mainLog("[START EXECUTE] " + this.getMixerName() + " (" + this.startExecString + ")");
+                    Process startExecProc = this.startExecuteProcessBuilder.start();
+                    startExecProc.waitFor();
+                    JavaKISSMain.mainLog("[START EXECUTE TERMINATED] " + this.getMixerName() + " (" + this.startExecString + ")");
+                } catch (Exception e) {
+
+                }
+            }
             try
             {
                 this.format = new AudioFormat(
@@ -582,7 +682,7 @@ public class MixerStreamProcess implements Runnable, MixerStream
             Thread x = new Thread(() -> {
                 try
                 {
-                    Thread.sleep(2000);
+                    Thread.sleep(this.mixerSettings.optLong("autoRestartDelay", 10000));
                     MixerStreamProcess.this.start();
                     JavaKISSMain.mainLog("[AUDIO MIXER AUTO-RESTART] " + MixerStreamProcess.this.getMixerName() + " (" + MixerStreamProcess.this.execString + ")");
                 } catch (Exception rsE) {}
@@ -633,6 +733,17 @@ public class MixerStreamProcess implements Runnable, MixerStream
         if (v)
         {
             JavaKISSMain.mainLog("[PTT PRESSED] " + this.getMixerName());
+            if (this.pttExecuteProcessBuilder != null)
+            {
+                try
+                {
+                    JavaKISSMain.mainLog("[PTT EXECUTE] " + this.getMixerName() + " (" + this.pttExecString + ")");
+                    Process pttProcess = this.pttExecuteProcessBuilder.start();
+                    pttProcess.waitFor();
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }
+            }
             if (this.playExecuteProcessBuilder != null && this.playbackProcess == null && this.playbackExecOutputStream == null)
             {
                 try
