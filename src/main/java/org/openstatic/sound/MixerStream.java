@@ -13,8 +13,8 @@ public interface MixerStream
     public JSONObject getMixerSettings();
     public void addMP3TargetStream(OutputStream out);
 
-    public void addTargetMixerStream(MixerStream ms);
-    public void removeTargetMixerStream(MixerStream ms);
+    public void addTargetMixerStream(MixerStream ms); // for patching mixer streams togehter
+    public void removeTargetMixerStream(MixerStream ms); // unpatch
     public Collection<MixerStream> getTargetMixerStreams();
 
     public void addRawTargetStream(OutputStream out);

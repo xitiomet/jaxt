@@ -178,43 +178,43 @@ var commands = {
                    'and the rest is the payload.\r\n\r\n' +
                    'Example:\r\n$ ui TARGET-1 This is some cool stuff!'
     },
-    lsaudio: {
+    lsradio: {
         f: (args) => {
-          sendEvent({"action":"lsaudio"});
+          sendEvent({"action":"lsradio"});
         },
-        description: 'List Audio devcies',
+        description: 'List Radio devcies',
     },
-    stopaudio: {
+    stopradio: {
         f: (args) => {
-          sendEvent({"action":"stopaudio", "devId": parseInt(args[0])});
+          sendEvent({"action":"stopradio", "devId": parseInt(args[0])});
           prompt(term);
         },
-        description: 'Stop an audio device (use lsaudio for dev#)',
+        description: 'Stop an audio device (use lsradio for dev#)',
     },
-    startaudio: {
+    startradio: {
         f: (args) => {
-          sendEvent({"action":"startaudio", "devId": parseInt(args[0])});
+          sendEvent({"action":"startradio", "devId": parseInt(args[0])});
           prompt(term);
         },
-        description: 'Start an audio device (use lsaudio for dev#)',
+        description: 'Start an audio device (use lsradio for dev#)',
     },
     monitor: {
         f: (args) => {
-          sendEvent({"action":"monitoraudio", "sourceDevId": parseInt(args[0]) , "destDevId": parseInt(args[1])});
+          sendEvent({"action":"monitorradio", "sourceDevId": parseInt(args[0]) , "destDevId": parseInt(args[1])});
           prompt(term);
         },
-        description: 'Monitor an audio device from another audio device (use lsaudio for dev#)\r\nExample: monitor src# dest#',
+        description: 'Monitor an audio device from another audio device (use lsradio for dev#)\r\nExample: monitor src# dest#',
     },
     unmonitor: {
         f: (args) => {
-          sendEvent({"action":"unmonitoraudio", "sourceDevId": parseInt(args[0]) , "destDevId": parseInt(args[1])});
+          sendEvent({"action":"unmonitorradio", "sourceDevId": parseInt(args[0]) , "destDevId": parseInt(args[1])});
           prompt(term);
         },
-        description: 'UN-Monitor an audio device from another audio device (use lsaudio for dev#)\r\nExample: monitor src# dest#',
+        description: 'UN-Monitor an audio device from another audio device (use lsradio for dev#)\r\nExample: monitor src# dest#',
     },
-    setaudio: {
+    setradio: {
         f: (args) => {
-          var event = {"action":"setaudio", "devId": parseInt(args[0])};
+          var event = {"action":"setradio", "devId": parseInt(args[0])};
           if (args.length >= 3)
           {
             var key = args[1];
@@ -241,11 +241,11 @@ var commands = {
           }
           sendEvent(event);
         },
-        description: 'Change or retrieve settings for an audio device\r\n(use lsaudio for dev#)',
+        description: 'Change or retrieve settings for an radio device\r\n(use lsradio for dev#)',
     },
-    unsetaudio: {
+    unsetradio: {
         f: (args) => {
-          var event = {"action":"unsetaudio", "devId": parseInt(args[0])};
+          var event = {"action":"unsetradio", "devId": parseInt(args[0])};
           if (args.length >= 2)
           {
             var key = args[1];
@@ -253,7 +253,7 @@ var commands = {
           }
           sendEvent(event);
         },
-        description: 'unset a parameter for an audio device\r\n(use lsaudio for dev#)',
+        description: 'unset a parameter for an audio device\r\n(use lsradio for dev#)',
     },
     source: {
       f: (args) => {
@@ -289,7 +289,7 @@ var commands = {
             listenClick(args[0]);
             prompt(term);
         },
-        description: 'Listen to an audio device via the current web browser\r\nExample: "listen 2" (use lsaudio to get device number)'
+        description: 'Listen to an audio device via the current web browser\r\nExample: "listen 2" (use lsradio to get device number)'
     },
     mute: {
         f: (args) => {
@@ -598,7 +598,7 @@ function listen()
                                 stopButton.onclick = function() {
                                     var devId = parseInt(this.id.substr(9));
                                     //alert(devId);
-                                    sendEvent({"action":"stopaudio", "devId": devId});
+                                    sendEvent({"action":"stopradio", "devId": devId});
                                     var sdd = document.getElementById('selectDeviceDiv');
                                     var bodyTag = document.getElementById('bodyTag');
                                     if (sdd != null)
@@ -610,7 +610,7 @@ function listen()
                                 stopButton.onclick = function() {
                                     var devId = parseInt(this.id.substr(9));
                                     //alert(devId);
-                                    sendEvent({"action":"startaudio", "devId": devId});
+                                    sendEvent({"action":"startradio", "devId": devId});
                                     var sdd = document.getElementById('selectDeviceDiv');
                                     var bodyTag = document.getElementById('bodyTag');
                                     if (sdd != null)
@@ -738,7 +738,7 @@ function setupWebsocket()
                     logAPRS(jsonObject);
                 } else if (action == 'dtmfSequence') {
                     logDTMFSequence(jsonObject);
-                } else if (action == 'startaudio') {
+                } else if (action == 'startradio') {
                     if (playingDevice == jsonObject.devId)
                     {
                         var audioElement = document.getElementById('audioElement');
@@ -746,15 +746,15 @@ function setupWebsocket()
                         audioElement.load();
                         audioElement.play(); 
                     }
-                } else if (action == 'stopaudio') {
+                } else if (action == 'stopradio') {
                     if (playingDevice == jsonObject.devId)
                     {
                         var audioElement = document.getElementById('audioElement');
                         audioElement.pause();
                     }
-                } else if (action == 'lsaudio') {
+                } else if (action == 'lsradio') {
                     var a = 0;
-                    term.writeln("-- Sound Devices --");
+                    term.writeln("-- Radio Devices --");
                     for(devname of jsonObject.devices)
                     {
                         if (jsonObject.state.hasOwnProperty(devname))
@@ -786,7 +786,7 @@ function setupWebsocket()
                         }
                     }
                     prompt(term);
-                } else if (action == 'setaudio') {
+                } else if (action == 'setradio') {
                     var a = 0;
                     term.writeln("-- " + jsonObject.devId + ": " + jsonObject.name + " --");
                     for(let key in jsonObject.mixerSettings)
@@ -800,7 +800,7 @@ function setupWebsocket()
                         }
                     }
                     prompt(term);
-                } else if (action == 'unsetaudio') {
+                } else if (action == 'unsetradio') {
                     var a = 0;
                     term.writeln("-- " + jsonObject.devId + ": " + jsonObject.name + " --");
                     for(let key in jsonObject.mixerSettings)

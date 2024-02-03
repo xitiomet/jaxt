@@ -589,20 +589,6 @@ public class MixerStreamHardware implements Runnable, MixerStream
                     AudioInputStream ais = AudioSystem.getAudioInputStream(this.format, fAIS);
                     
                     this.setPTT(true);
-                    /*
-                    Clip clip = (Clip) AudioSystem.getClip(this.mixerInfo);
-                    clip.open(ais);
-                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-                    gainControl.setValue(1.0f);
-                    clip.start();
-                    Thread.sleep(1000);
-                    while(clip.isActive())
-                    {
-                        Thread.sleep(1000);
-                    }
-                    clip.flush();
-                    clip.close();
-                    */
 
                     ais.transferTo(this.getOutputStream());
                     ais.close();

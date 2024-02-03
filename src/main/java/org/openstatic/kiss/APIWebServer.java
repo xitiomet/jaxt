@@ -227,19 +227,19 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                     }
                 } else if (action.equals("clearHistory")) {
                     this.packetHistory.clear();
-                } else if (action.equals("lsaudio")) {
+                } else if (action.equals("lsradio")) {
                     APIWebServer.this.refreshMixers();
                     JSONObject infoPacket = new JSONObject();
-                    infoPacket.put("action", "lsaudio");
+                    infoPacket.put("action", "lsradio");
                     infoPacket.put("devices", JavaKISSMain.soundSystem.getAvailableDevices());
                     infoPacket.put("state", JavaKISSMain.soundSystem.getAvailableStates());
                     infoPacket.put("timestamp", System.currentTimeMillis());
                     session.getRemote().sendStringByFuture(infoPacket.toString());
-                } else if (action.equals("stopaudio")) {
+                } else if (action.equals("stopradio")) {
                     int devId = j.optInt("devId", -1);
                     if (devId >= 0)
                         JavaKISSMain.soundSystem.stopMixer(devId);
-                } else if (action.equals("monitoraudio")) {
+                } else if (action.equals("monitorradio")) {
                     int sourceDevId = j.optInt("sourceDevId", -1);
                     int destDevId = j.optInt("destDevId", -1);
                     if (sourceDevId >= 0 && destDevId >= 0)
@@ -252,7 +252,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                             sourceMixerStream.addTargetMixerStream(destMixerStream);
                         }
                     }
-                } else if (action.equals("unmonitoraudio")) {
+                } else if (action.equals("unmonitorradio")) {
                     int sourceDevId = j.optInt("sourceDevId", -1);
                     int destDevId = j.optInt("destDevId", -1);
                     if (sourceDevId >= 0 && destDevId >= 0)
@@ -265,11 +265,11 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                             sourceMixerStream.removeTargetMixerStream(destMixerStream);
                         }
                     }
-                } else if (action.equals("startaudio")) {
+                } else if (action.equals("startradio")) {
                     int devId = j.optInt("devId", -1);
                     if (devId >= 0)
                         JavaKISSMain.soundSystem.startMixer(devId);
-                } else if (action.equals("setaudio")) {
+                } else if (action.equals("setradio")) {
                     int devId = j.optInt("devId", -1);
                     if (devId >= 0)
                     {
@@ -283,14 +283,14 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                             }
                         }
                         JSONObject setAudioPacket = new JSONObject();
-                        setAudioPacket.put("action", "setaudio");
+                        setAudioPacket.put("action", "setradio");
                         setAudioPacket.put("devId", devId);
                         setAudioPacket.put("name", mixerStream.getMixerName());
                         setAudioPacket.put("mixerSettings", mixerStream.getMixerSettings());
                         setAudioPacket.put("timestamp", System.currentTimeMillis());
                         session.getRemote().sendStringByFuture(setAudioPacket.toString());
                     }
-                 } else if (action.equals("unsetaudio")) {
+                 } else if (action.equals("unsetradio")) {
                     int devId = j.optInt("devId", -1);
                     if (devId >= 0)
                     {
@@ -304,7 +304,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                             }
                         }
                         JSONObject setAudioPacket = new JSONObject();
-                        setAudioPacket.put("action", "unsetaudio");
+                        setAudioPacket.put("action", "unsetradio");
                         setAudioPacket.put("devId", devId);
                         setAudioPacket.put("name", mixerStream.getMixerName());
                         setAudioPacket.put("mixerSettings", mixerStream.getMixerSettings());
@@ -813,7 +813,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     @Override
     public void onShutdown(MixerStream mixerStream) {
         JSONObject jo = new JSONObject();
-        jo.put("action", "stopaudio");
+        jo.put("action", "stopradio");
         jo.put("timestamp", System.currentTimeMillis());
         jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
         jo.put("device", mixerStream.getMixerName());
@@ -823,7 +823,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
     @Override
     public void onStartup(MixerStream mixerStream) {
         JSONObject jo = new JSONObject();
-        jo.put("action", "startaudio");
+        jo.put("action", "startradio");
         jo.put("timestamp", System.currentTimeMillis());
         jo.put("devId", JavaKISSMain.soundSystem.getMixerId(mixerStream));
         jo.put("device", mixerStream.getMixerName());
