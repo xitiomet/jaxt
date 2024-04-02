@@ -1,12 +1,14 @@
 package org.openstatic.aprs.parser;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
 import java.util.Optional;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -16,6 +18,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Optional;
 import org.json.JSONObject;
+import org.openstatic.kiss.JavaKISSMain;
 
 public class Callsign implements Serializable
 {
@@ -98,33 +101,43 @@ public class Callsign implements Serializable
     {
         try
         {
-            String url = "https://api.hamdb.org/v1/" + URLEncoder.encode(this.callsign, "UTF-8") + "/json/jaxt";
-            HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
-            con.setRequestMethod("GET");
-            con.setDoOutput(false);
-			con.setReadTimeout(10000);
-			con.setConnectTimeout(10000);
-            InputStream inputStream = con.getInputStream();
-            int responseCode = con.getResponseCode();
-            InputStreamReader isr = new InputStreamReader(inputStream);
-            Optional<String> optResponse = new BufferedReader(isr).lines().reduce((a, b) -> a + b);
-            String output = "NO OUTPUT";
-            if (optResponse.isPresent())
+            File callsignFolder = new File(JavaKISSMain.logsFolder, "callsign");
+            if (!callsignFolder.exists())
+                callsignFolder.mkdir();
+            File callsignFile = new File(callsignFolder, this.callsign + ".json");
+            if (callsignFile.exists())
             {
-                output = optResponse.get();
-                JSONObject response = new JSONObject(output);
-                if (response.has("hamdb"))
-                {
-                    JSONObject hamdbObject = response.getJSONObject("hamdb");
-                    if (hamdbObject.has("callsign"))
-                    {
-                        this.hamDbRecord = hamdbObject.getJSONObject("callsign");
-                    }
-                }
+                this.hamDbRecord = JavaKISSMain.loadJSONObject(callsignFile);
             } else {
-				this.hamDbRecord = new JSONObject();
-				this.hamDbRecord.put("error", "No Response");
-			}
+                String url = "https://api.hamdb.org/v1/" + URLEncoder.encode(this.callsign, "UTF-8") + "/json/jaxt";
+                HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+                con.setRequestMethod("GET");
+                con.setDoOutput(false);
+                con.setReadTimeout(10000);
+                con.setConnectTimeout(10000);
+                InputStream inputStream = con.getInputStream();
+                int responseCode = con.getResponseCode();
+                InputStreamReader isr = new InputStreamReader(inputStream);
+                Optional<String> optResponse = new BufferedReader(isr).lines().reduce((a, b) -> a + b);
+                String output = "NO OUTPUT";
+                if (optResponse.isPresent())
+                {
+                    output = optResponse.get();
+                    JSONObject response = new JSONObject(output);
+                    if (response.has("hamdb"))
+                    {
+                        JSONObject hamdbObject = response.getJSONObject("hamdb");
+                        if (hamdbObject.has("callsign"))
+                        {
+                            this.hamDbRecord = hamdbObject.getJSONObject("callsign");
+                            JavaKISSMain.saveJSONObject(callsignFile, this.hamDbRecord);
+                        }
+                    }
+                } else {
+                    this.hamDbRecord = new JSONObject();
+                    this.hamDbRecord.put("error", "No Response");
+                }
+            }
         } catch (Exception e) {
             this.hamDbRecord = new JSONObject();
 			this.hamDbRecord.put("error", e.getMessage());
