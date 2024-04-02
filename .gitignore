@@ -6,3 +6,4 @@ jaxt-logs/
 upload.sh
 commands.json
 jre/
+.vscode/

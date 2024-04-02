@@ -1003,7 +1003,10 @@ function logAPRS(jsonObject)
         if (jsonObject.hasOwnProperty('sourceCallsign'))
         {
             var sourceCallsign = jsonObject.sourceCallsign;
-            line += " (" + sourceCallsign.fname + " " + sourceCallsign.name + " " + sourceCallsign.addr2 + ") ";
+            if (sourceCallsign.hasOwnProperty('fname') && sourceCallsign.hasOwnProperty('name') && sourceCallsign.hasOwnProperty('addr2'))
+            {
+                line += " (" + sourceCallsign.fname + " " + sourceCallsign.name + " - " + sourceCallsign.addr2 + ") ";
+            }
         }
         if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
         {
