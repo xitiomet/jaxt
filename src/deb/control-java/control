@@ -5,4 +5,4 @@ Priority: low
 Architecture: all
 Description: An AX.25 Utility and remote radio server
 Maintainer: openstatic.org <support@openstatic.org>
-Depends: default-jre libhamlib-utils
+Depends: default-jre, libhamlib-utils
