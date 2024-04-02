@@ -1000,22 +1000,21 @@ function logAPRS(jsonObject)
     if (document.getElementById(divId) == undefined)
     {
         var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": <a target=\"_blank\" href=\"https://www.qrz.com/db/" + removeSSIDFromCallsign(jsonObject.source) + "\">" + jsonObject.source + "</a>";
-        if (jsonObject.hasOwnProperty('sourceCallsign'))
-        {
-            var sourceCallsign = jsonObject.sourceCallsign;
-            if (sourceCallsign.hasOwnProperty('fname') && sourceCallsign.hasOwnProperty('name') && sourceCallsign.hasOwnProperty('addr2'))
-            {
-                line += " (" + sourceCallsign.fname + " " + sourceCallsign.name + " - " + sourceCallsign.addr2 + ") ";
-            }
-        }
         if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
         {
             var lat = jsonObject.latitude.toFixed(6);
             var lon = jsonObject.longitude.toFixed(6);
             line += " <a target=\"_blank\" href=\"https://www.google.com/maps/?q=" + lat + "," + lon + "\">" + lat + "," + lon + "</a>"
         }
+        if (jsonObject.hasOwnProperty('sourceCallsign'))
+        {
+            var sourceCallsign = jsonObject.sourceCallsign;
+            if (sourceCallsign.hasOwnProperty('fname') && sourceCallsign.hasOwnProperty('name') && sourceCallsign.hasOwnProperty('addr2') && sourceCallsign.hasOwnProperty('state'))
+            {
+                line += " (" + (sourceCallsign.fname + " " + sourceCallsign.name).trim() + " - " + sourceCallsign.addr2.trim() + ", " + sourceCallsign.state + ")";
+            }
+        }
         line += " " + jsonObject.comment + "</div>";
-
         console.innerHTML += line;
         window.scrollTo(0,document.body.scrollHeight);
     }
