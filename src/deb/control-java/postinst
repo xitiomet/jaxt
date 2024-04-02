@@ -1,5 +1,5 @@
 #!/bin/bash
-echo irc-gpt-bot Post-Install Script Running!
+echo jaxt Post-Install Script Running!
 update-rc.d jaxt defaults
 update-rc.d jaxt enable
 /etc/init.d/jaxt start

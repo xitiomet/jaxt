@@ -1002,6 +1002,7 @@ function logAPRS(jsonObject)
         var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": <a target=\"_blank\" href=\"https://www.qrz.com/db/" + removeSSIDFromCallsign(jsonObject.source) + "\">" + jsonObject.source + "</a>";
         if (jsonObject.hasOwnProperty('sourceCallsign'))
         {
+            var sourceCallsign = jsonObject.sourceCallsign;
             line += " (" + sourceCallsign.fname + " " + sourceCallsign.name + " " + sourceCallsign.addr2 + ") ";
         }
         if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))

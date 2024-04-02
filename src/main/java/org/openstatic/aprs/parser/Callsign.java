@@ -102,8 +102,8 @@ public class Callsign implements Serializable
             HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
             con.setRequestMethod("GET");
             con.setDoOutput(false);
-			con.setReadTimeout(10);
-			con.setConnectTimeout(10);
+			con.setReadTimeout(10000);
+			con.setConnectTimeout(10000);
             InputStream inputStream = con.getInputStream();
             int responseCode = con.getResponseCode();
             InputStreamReader isr = new InputStreamReader(inputStream);
@@ -123,9 +123,11 @@ public class Callsign implements Serializable
                 }
             } else {
 				this.hamDbRecord = new JSONObject();
+				this.hamDbRecord.put("error", "No Response");
 			}
         } catch (Exception e) {
             this.hamDbRecord = new JSONObject();
+			this.hamDbRecord.put("error", e.getMessage());
         }
     }
 

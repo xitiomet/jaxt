@@ -728,7 +728,7 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                             JSONObject aprsJSON = new JSONObject();
                             String sourceCallsign = packet.getSourceCallsign();
                             aprsJSON.put("source", sourceCallsign);
-                            aprsJSON.put("sourceCallsign", new Callsign(sourceCallsign).getHamDBRecord());
+                            aprsJSON.put("sourceCallsign", (new Callsign(sourceCallsign)).getHamDBRecord());
                             aprsJSON.put("destination", packet.getDestinationCallsign());
                             if (packet.getPath() != null)
                                 aprsJSON.put("path", new JSONArray(packet.getPath()));
