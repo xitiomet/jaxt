@@ -4,6 +4,7 @@ package org.openstatic.kiss;
 import org.json.*;
 import org.openstatic.aprs.parser.APRSPacket;
 import org.openstatic.aprs.parser.APRSTypes;
+import org.openstatic.aprs.parser.Callsign;
 import org.openstatic.aprs.parser.Digipeater;
 import org.openstatic.aprs.parser.InformationField;
 import org.openstatic.aprs.parser.ObjectPacket;
@@ -233,6 +234,14 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                     infoPacket.put("action", "lsradio");
                     infoPacket.put("devices", JavaKISSMain.soundSystem.getAvailableDevices());
                     infoPacket.put("state", JavaKISSMain.soundSystem.getAvailableStates());
+                    infoPacket.put("timestamp", System.currentTimeMillis());
+                    session.getRemote().sendStringByFuture(infoPacket.toString());
+                } else if (action.equals("lucs")) {
+                    Callsign callsign = new Callsign(j.optString("callsign"));
+                    APIWebServer.this.refreshMixers();
+                    JSONObject infoPacket = new JSONObject();
+                    infoPacket.put("action", "lucs");
+                    infoPacket.put("callsign", callsign.getHamDBRecord());
                     infoPacket.put("timestamp", System.currentTimeMillis());
                     session.getRemote().sendStringByFuture(infoPacket.toString());
                 } else if (action.equals("stopradio")) {
@@ -717,7 +726,9 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
                         if ( aprsData != null) 
                         {
                             JSONObject aprsJSON = new JSONObject();
-                            aprsJSON.put("source", packet.getSourceCallsign());
+                            String sourceCallsign = packet.getSourceCallsign();
+                            aprsJSON.put("source", sourceCallsign);
+                            aprsJSON.put("sourceCallsign", new Callsign(sourceCallsign).getHamDBRecord());
                             aprsJSON.put("destination", packet.getDestinationCallsign());
                             if (packet.getPath() != null)
                                 aprsJSON.put("path", new JSONArray(packet.getPath()));

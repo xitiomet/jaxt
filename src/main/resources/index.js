@@ -184,6 +184,12 @@ var commands = {
         },
         description: 'List Radio devcies',
     },
+    lucs: {
+        f: (args) => {
+          sendEvent({"action":"lucs", "callsign": args[0]});
+        },
+        description: 'Look up callsign information',
+    },
     stopradio: {
         f: (args) => {
           sendEvent({"action":"stopradio", "devId": parseInt(args[0])});
@@ -800,6 +806,18 @@ function setupWebsocket()
                         }
                     }
                     prompt(term);
+                } else if (action == 'lucs') {
+                    for(let key in jsonObject.callsign)
+                    {
+                        let value = jsonObject.callsign[key];
+                        if (value instanceof Object)
+                        {
+                            term.writeln(key + ": " + JSON.stringify(value));
+                        } else {
+                            term.writeln(key + ": " + value);
+                        }
+                    }
+                    prompt(term);
                 } else if (action == 'unsetradio') {
                     var a = 0;
                     term.writeln("-- " + jsonObject.devId + ": " + jsonObject.name + " --");
@@ -982,7 +1000,10 @@ function logAPRS(jsonObject)
     if (document.getElementById(divId) == undefined)
     {
         var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": <a target=\"_blank\" href=\"https://www.qrz.com/db/" + removeSSIDFromCallsign(jsonObject.source) + "\">" + jsonObject.source + "</a>";
-        
+        if (jsonObject.hasOwnProperty('sourceCallsign'))
+        {
+            line += " (" + sourceCallsign.fname + " " + sourceCallsign.name + " " + sourceCallsign.addr2 + ") ";
+        }
         if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
         {
             var lat = jsonObject.latitude.toFixed(6);
