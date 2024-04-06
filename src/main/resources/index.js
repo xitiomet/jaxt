@@ -807,7 +807,7 @@ function setupWebsocket()
                     }
                     prompt(term);
                 } else if (action == 'lucs') {
-                    for(let key in jsonObject.callsign)
+                    /*for(let key in jsonObject.callsign)
                     {
                         let value = jsonObject.callsign[key];
                         if (value instanceof Object)
@@ -816,7 +816,21 @@ function setupWebsocket()
                         } else {
                             term.writeln(key + ": " + value);
                         }
-                    }
+                    }*/
+                    var callsign = jsonObject.callsign;
+                    term.writeln("--- CALLSIGN " + callsign['call'] + " ---");
+                    term.writeln((callsign['fname'] + ' ' + callsign['name']).trim());
+                    if (callsign['class'] == "T")
+                        term.writeln("Technician");
+                    else if (callsign['class'] == "G")
+                        term.writeln("General");
+                    else if (callsign['class'] == "E")
+                        term.writeln("Amateur Extra");
+                    term.writeln(callsign['addr1']);
+                    term.writeln(callsign['addr2'] + ', ' + callsign['state'] + ' ' + callsign['zip']);
+                    term.writeln("Expires: " + callsign['expires']);
+                    term.writeln("Status: " + callsign['status']);
+                    term.writeln("Location: " + callsign['lat'] + ", " + callsign['lon'] + " " + callsign['grid']);
                     prompt(term);
                 } else if (action == 'unsetradio') {
                     var a = 0;
