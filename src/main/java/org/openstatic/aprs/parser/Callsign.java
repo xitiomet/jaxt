@@ -130,7 +130,13 @@ public class Callsign implements Serializable
                         if (hamdbObject.has("callsign"))
                         {
                             this.hamDbRecord = hamdbObject.getJSONObject("callsign");
-                            JavaKISSMain.saveJSONObject(callsignFile, this.hamDbRecord);
+                            if (this.hamDbRecord.optString("name","NOT_FOUND").equals("NOT_FOUND"))
+                            {
+                                this.hamDbRecord = new JSONObject();
+                                this.hamDbRecord.put("error", "Not Found");
+                            } else {
+                                JavaKISSMain.saveJSONObject(callsignFile, this.hamDbRecord);
+                            }
                         }
                     }
                 } else {

@@ -807,30 +807,25 @@ function setupWebsocket()
                     }
                     prompt(term);
                 } else if (action == 'lucs') {
-                    /*for(let key in jsonObject.callsign)
-                    {
-                        let value = jsonObject.callsign[key];
-                        if (value instanceof Object)
-                        {
-                            term.writeln(key + ": " + JSON.stringify(value));
-                        } else {
-                            term.writeln(key + ": " + value);
-                        }
-                    }*/
                     var callsign = jsonObject.callsign;
-                    term.writeln("--- CALLSIGN " + callsign['call'] + " ---");
-                    term.writeln((callsign['fname'] + ' ' + callsign['name']).trim());
-                    if (callsign['class'] == "T")
-                        term.writeln("Technician");
-                    else if (callsign['class'] == "G")
-                        term.writeln("General");
-                    else if (callsign['class'] == "E")
-                        term.writeln("Amateur Extra");
-                    term.writeln(callsign['addr1']);
-                    term.writeln(callsign['addr2'] + ', ' + callsign['state'] + ' ' + callsign['zip']);
-                    term.writeln("Expires: " + callsign['expires']);
-                    term.writeln("Status: " + callsign['status']);
-                    term.writeln("Location: " + callsign['lat'] + ", " + callsign['lon'] + " " + callsign['grid']);
+                    if (callsign.hasOwnProperty('error'))
+                    {
+                        term.writeln("\x1B[0;91mERROR: " + callsign['error'] + "\x1B[0m");
+                    } else {
+                        term.writeln("--- CALLSIGN " + callsign['call'] + " ---");
+                        term.writeln((callsign['fname'] + ' ' + callsign['name']).trim());
+                        if (callsign['class'] == "T")
+                            term.writeln("\x1B[0;91mTechnician\x1B[0m");
+                        else if (callsign['class'] == "G")
+                            term.writeln("\x1B[0;93mGeneral\x1B[0m");
+                        else if (callsign['class'] == "E")
+                            term.writeln("\x1B[0;92mAmateur Extra\x1B[0m");
+                        term.writeln(callsign['addr1']);
+                        term.writeln(callsign['addr2'] + ', ' + callsign['state'] + ' ' + callsign['zip']);
+                        term.writeln("Expires: " + callsign['expires']);
+                        term.writeln("Status: " + callsign['status']);
+                        term.writeln("Location: " + callsign['lat'] + ", " + callsign['lon'] + " " + callsign['grid']);
+                    }
                     prompt(term);
                 } else if (action == 'unsetradio') {
                     var a = 0;
@@ -973,7 +968,7 @@ function logRecording(jsonObject)
     var divId = jsonObject.uri + "_" + d.getTime();
     if (document.getElementById(divId) == undefined)
     {
-        var line =  "<div id=\"" + divId + "\" style=\"color: #FF5733;\">( REC " + getDTString(d) + ") " + jsonObject.name + " <a href=\"" + jsonObject.uri + "\" target=\"_blank\">(Download)</a> <a href=\"#\" onclick=\"playAudio('" + jsonObject.uri + "');event.preventDefault();\">(Listen)</a> " + jsonObject.duration + "ms";
+        var line =  "<div id=\"" + divId + "\" style=\"color: #FF5733;\">( REC " + getDTString(d) + ") " + jsonObject.device + ": " + jsonObject.name + " <a href=\"" + jsonObject.uri + "\" target=\"_blank\">(Download)</a> <a href=\"#\" onclick=\"playAudio('" + jsonObject.uri + "');event.preventDefault();\">(Listen)</a> " + jsonObject.duration + "ms";
         line += "</div>";
         console.innerHTML += line;
         window.scrollTo(0,document.body.scrollHeight);
@@ -1013,7 +1008,7 @@ function logAPRS(jsonObject)
     var divId = jsonObject.source + "_" + jsonObject.type + "_" + d.getTime();
     if (document.getElementById(divId) == undefined)
     {
-        var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": <a target=\"_blank\" href=\"https://www.qrz.com/db/" + removeSSIDFromCallsign(jsonObject.source) + "\">" + jsonObject.source + "</a>";
+        var line =  "<div id=\"" + divId + "\" style=\"color: #1cb4d6;\">(APRS " + getDTString(d) + ") " + jsonObject.type + ": <a target=\"_blank\" href=\"https://www.qrz.com/db/" + removeSSIDFromCallsign(jsonObject.source) + "\">" + jsonObject.source + "</a> <a target=\"_blank\" href=\"https://aprs.fi/#!call=a%2F" + jsonObject.source + "&timerange=3600&tail=3600\">aprs.fi</a>";
         if (jsonObject.hasOwnProperty('latitude') && jsonObject.hasOwnProperty('longitude'))
         {
             var lat = jsonObject.latitude.toFixed(6);

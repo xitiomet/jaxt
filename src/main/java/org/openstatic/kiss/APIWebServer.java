@@ -860,7 +860,9 @@ public class APIWebServer implements AX25PacketListener, Runnable, MixerStreamLi
         recordingEvent.put("name", recordingFile.getName());
         recordingEvent.put("timestamp", System.currentTimeMillis());
         recordingEvent.put("duration",recordingDuration);
-        recordingEvent.put("uri", "jaxt/api/logs/" + recordingFile.getAbsolutePath().replaceAll(Pattern.quote(JavaKISSMain.logsFolder.getAbsolutePath()), ""));
+        recordingEvent.put("device", mixerStream.getMixerName());
+        String uri = ("jaxt/api/logs/" + recordingFile.getAbsolutePath().replaceAll(Pattern.quote(JavaKISSMain.logsFolder.getAbsolutePath()), "")).replaceAll(Pattern.quote("//"), "/");
+        recordingEvent.put("uri", uri);
         JavaKISSMain.apiWebServer.broadcastJSONObject(recordingEvent);
         JavaKISSMain.apiWebServer.addHistory(recordingEvent);
     }
